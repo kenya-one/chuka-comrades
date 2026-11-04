@@ -1,0 +1,39 @@
+.cu { max-width: 860px; margin: 0 auto; padding: 4px 0 28px; color: #1f2933; }
+.cu button, .cu input, .cu textarea, .cu select { font: inherit; }
+.cu-hero { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: flex-end; padding: 28px; border-radius: 22px; color: #fff; background: linear-gradient(120deg, #0f3d2e, #1d7a56); margin-bottom: 18px; }
+.cu-hero h1 { margin: 4px 0 6px; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+.cu-hero p { margin: 0; opacity: .9; max-width: 460px; }
+.cu-eyebrow { font-size: .72rem; letter-spacing: .12em; font-weight: 700; opacity: .85; }
+.cu-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cu-btn { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; padding: 9px 16px; background: #1d7a56; color: #fff; font-weight: 600; cursor: pointer; text-decoration: none; }
+.cu-btn:disabled { opacity: .55; cursor: not-allowed; }
+.cu-hero .cu-btn { background: #fff; color: #0f3d2e; }
+.cu-btn-light { background: #25d366 !important; color: #063 !important; }
+.cu-btn-ghost { background: #eef5f1; color: #14573f; }
+.cu-btn-danger { background: #fdeaea; color: #b42318; }
+.cu-new { margin-bottom: 14px; }
+.cu-card, .cu-composer, .cu-empty { background: #fff; border: 1px solid #e5ebe8; border-radius: 18px; padding: 20px; margin-bottom: 14px; }
+.cu-card h2 { margin: 8px 0; font-size: 1.2rem; }
+.cu-body { white-space: pre-wrap; line-height: 1.6; margin: 0 0 12px; }
+.cu-deleted { opacity: .6; border-style: dashed; }
+.cu-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cu-chip { font-size: .72rem; padding: 3px 10px; border-radius: 999px; background: #e8f4ee; color: #14573f; text-transform: capitalize; display: inline-flex; gap: 4px; align-items: center; }
+.cu-pin { background: #fff4d6; color: #8a5a00; } .cu-draft { background: #eee; color: #555; }
+.cu-date { margin-left: auto; font-size: .78rem; color: #7b8794; }
+.cu-media { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.cu-media img, .cu-media video { width: 100%; max-height: 420px; object-fit: cover; border-radius: 12px; background: #000; }
+.cu-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cu-composer label { display: block; font-weight: 600; font-size: .86rem; margin-bottom: 12px; }
+.cu-composer input[type=text], .cu-composer input:not([type]), .cu-composer textarea, .cu-composer select { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px 12px; border: 1px solid #d3dcd8; border-radius: 10px; }
+.cu-composer-head { display: flex; justify-content: space-between; align-items: center; }
+.cu-composer-head h3 { margin: 0 0 10px; }
+.cu-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.cu-check { display: flex !important; gap: 8px; align-items: center; }
+.cu-files { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.cu-file { display: inline-flex; gap: 6px; align-items: center; background: #eef5f1; border-radius: 999px; padding: 4px 10px; font-size: .8rem; }
+.cu-file button, .cu-icon { border: 0; background: none; cursor: pointer; display: inline-flex; }
+.cu-upload { border: 2px dashed #bcd0c7; border-radius: 12px; padding: 14px; text-align: center; cursor: pointer; color: #14573f; }
+.cu-upload input { display: none; }
+.cu-error { color: #b42318; background: #fdeaea; padding: 10px 12px; border-radius: 10px; }
+.cu-muted { color: #7b8794; font-size: .9rem; } .cu-empty { text-align: center; color: #7b8794; }
+.cu-link { border: 0; background: none; color: #1d7a56; text-decoration: underline; cursor: pointer; padding: 0; }

@@ -1,0 +1,3 @@
+[functions.chuka-soko-api]
+# This function verifies Firebase ID tokens itself; do not require Supabase JWTs at the gateway.
+verify_jwt = false
