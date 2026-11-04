@@ -424,7 +424,7 @@ function App() {
       <main className="loading-screen" aria-label="Loading Chuka Comrades">
         <div className="loading-brand">
           <div className="loading-mark">
-            <img src="/chuka%20crest.jfif" alt="Chuka University crest" />
+            <img src={`${import.meta.env.BASE_URL}chukalogo.png`} alt="Chuka Comrades logo" />
           </div>
           <p className="loading-tagline">Knowledge is wealth</p>
         </div>
@@ -457,7 +457,7 @@ function App() {
           <span className="brand-crest-wrap">
   <img
     className="brand-crest"
-    src={`${import.meta.env.BASE_URL}chukalogo.jfif`}
+    src={`${import.meta.env.BASE_URL}chukalogo.png`}
     alt="Chuka University crest"
   />
 </span>

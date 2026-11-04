@@ -525,3 +525,76 @@ button:focus-visible, a:focus-visible { outline: 3px solid #8bb99a; outline-offs
 .efootball-logo-wrap{width:42px;height:42px;flex:0 0 42px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #e3eae2;border-radius:12px;padding:4px;overflow:hidden}
 .efootball-logo{display:block;width:100%;height:100%;object-fit:contain}
 .efootball-community-link:hover .efootball-logo-wrap{border-color:#a9c9ae;box-shadow:0 3px 12px #155c3918}
+
+/* ===== Small-screen landing page fixes ===== */
+.brand-crest-wrap, .loading-mark { overflow: hidden; }
+.loading-mark img, .brand-crest { object-fit: contain; }
+
+@media (max-width: 760px) {
+  /* Let the page scroll naturally instead of clipping inside a fixed-height shell */
+  .onepage-shell { height: auto; min-height: 100dvh; overflow: visible; }
+  .onepage-content { flex: none; min-height: 0; overflow: visible; padding: 12px 0 16px; }
+  .onepage-panel, .onepage-detail { overflow: visible; padding: 8px 0 20px; }
+
+  /* Header: logo + sign-in on row one, nav as a swipeable row beneath */
+  .onepage-header {
+    height: auto; min-height: 0; padding: 10px 0 8px;
+    flex-wrap: wrap; row-gap: 8px; position: sticky; top: 0;
+    background: #fbfcfa; z-index: 20;
+  }
+  .onepage-header .brand { flex: 1 1 auto; min-width: 0; order: 1; }
+  .onepage-header > .header-signin { order: 2; margin: 0; width: auto; flex-shrink: 0; }
+  .onepage-nav {
+    order: 3; flex: 1 0 100%; overflow-x: auto; gap: 6px; padding-bottom: 2px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .onepage-nav::-webkit-scrollbar { display: none; }
+  .onepage-nav button { flex: 0 0 auto; white-space: nowrap; font-size: 12px; padding: 8px 12px; background: #f2f6f1; }
+  .onepage-nav button.active { background: #e0eee5; }
+  .brand-copy strong { font-size: 15px; white-space: nowrap; }
+  .brand-copy small { display: block; font-size: 10px; }
+
+  /* Welcome card stacks */
+  .onepage-welcome { flex-direction: column; align-items: stretch; gap: 12px; padding: 16px; }
+  .onepage-welcome h1 { font-size: 26px; letter-spacing: -.8px; }
+  .onepage-welcome p { font-size: 13px; }
+  .onepage-welcome .section-kicker { font-size: 9px; letter-spacing: 1px; line-height: 1.5; }
+  .compact-google { font-size: 14px; width: 100%; min-height: 48px; justify-content: center; }
+  .compact-google span { display: inline; }
+  .onepage-user { min-width: 0; }
+
+  .onepage-section-title { margin: 18px 0 10px; }
+  .onepage-section-title h2 { font-size: 19px; }
+
+  /* Community cards: single readable column with comfortable tap targets */
+  .onepage-community-grid { grid-template-columns: 1fr; gap: 8px; }
+  .onepage-community-card { min-height: 64px; padding: 11px 12px; gap: 12px; }
+  .onepage-community-copy strong { font-size: 14px; }
+  .onepage-community-copy small { font-size: 12px; }
+
+  .onepage-bottom-row { grid-template-columns: 1fr; gap: 8px; }
+  .onepage-pulse, .onepage-shortcuts { min-height: 0; padding: 14px; }
+  .onepage-pulse strong { font-size: 15px; }
+  .onepage-pulse small, .onepage-shortcuts button, .onepage-pulse button { font-size: 12px; }
+
+  .onepage-link-grid { grid-template-columns: 1fr; }
+  .onepage-link-grid strong { font-size: 14px; }
+  .onepage-link-grid small { font-size: 12px; }
+  .onepage-panel h1, .onepage-detail h1 { font-size: 24px; }
+
+  .onepage-footer { flex-direction: column; gap: 3px; align-items: center; text-align: center; font-size: 11px; padding: 12px 0 16px; }
+}
+
+@media (max-width: 380px) {
+  .onepage-header, .onepage-content, .onepage-footer { width: calc(100% - 20px); }
+  .brand-copy small { display: none; }
+  .brand-copy strong { font-size: 14px; }
+  .onepage-welcome h1 { font-size: 23px; }
+  .onepage-header > .header-signin { padding: 0 12px; font-size: 12px; }
+}
+
+/* Loading screen on small phones */
+@media (max-width: 480px) {
+  .loading-mark { width: 104px; height: 104px; border-radius: 26px; }
+  .loading-tagline { font-size: 14px; }
+}
