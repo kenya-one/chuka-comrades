@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import type { User } from "firebase/auth";
 import { BadgeCheck, Building2, CalendarDays, Camera, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, MapPin, MessageCircle, Phone, RefreshCw, ShieldCheck, Users, X, ZoomIn } from "lucide-react";
@@ -18,6 +18,38 @@ const money = (value: number) => `KSh ${Number(value).toLocaleString("en-KE")}`;
 const digits = (value: string) => value.replace(/\D/g, "");
 const waLink = (phone: string, message: string) => `https://wa.me/${digits(phone)}?text=${encodeURIComponent(message)}`;
 const shareLink = (message: string) => `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+const listingShareText = (item: HostelListing) =>
+  `Chuka Comrades Hostel Listing\n${item.name}\nLocation: ${item.area}${item.landmark ? `, near ${item.landmark}` : ""}\nRent: ${money(item.rent_amount)} / ${item.rent_period}\nRoom type: ${item.room_type}\nAvailable: ${item.available_rooms}\nContact: ${item.landlord_contact}\nBrowse on Chuka Comrades.`;
+
+/** Shares the listing text AND its photos. Uses the phone's share sheet when it can attach files, otherwise WhatsApp with photo links. */
+async function shareListing(item: HostelListing) {
+  const text = listingShareText(item);
+  const urls = (item.image_urls || []).slice(0, 3);
+
+  if (urls.length && typeof navigator.canShare === "function" && typeof navigator.share === "function") {
+    try {
+      const files = await Promise.all(urls.map(async (url, i) => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Photo download failed");
+        const blob = await response.blob();
+        const ext = (blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
+        const safeName = item.name.replace(/[^\w]+/g, "-");
+        return new File([blob], `${safeName}-${i + 1}.${ext}`, { type: blob.type || "image/jpeg" });
+      }));
+      if (navigator.canShare({ files })) {
+        await navigator.share({ files, text, title: item.name });
+        return;
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+    }
+  }
+
+  const withLinks = urls.length ? `${text}\n\nPhotos:\n${urls.join("\n")}` : text;
+  window.open(shareLink(withLinks), "_blank", "noopener,noreferrer");
+}
+
 
 export default function HostelSection({ user }: { user: User | null; onSignIn: () => void }) {
   const [tab, setTab] = useState<"browse" | "landlord" | "admin">("browse");
@@ -103,7 +135,7 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
   }
 
   return <section className="cc-hostel" aria-label="Hostel directory">
-    <header className="cc-hostel__hero" style={{ "--hostel-bg": `url(${import.meta.env.BASE_URL}hostel-bg.jpeg)` } as CSSProperties}>
+    <header className="cc-hostel__hero">
       <span className="cc-hostel__eyebrow">CHUKA COMRADES ACCOMMODATION</span>
       <h1>Find a hostel. Find your space.</h1>
       <p>Browse student accommodation around Chuka, contact landlords directly, or ask our admin team to help you connect.</p>
@@ -161,7 +193,7 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
       <AdminCreateHostelForm user={user} busy={busy === "create"} maxImages={settings.maxImagesPerHostel} onCreate={createListing}/>
       <div className="cc-hostel__admin-heading"><div><span className="cc-hostel__eyebrow">ADMIN ONLY</span><h2>Hostel management desk</h2><p>Add WhatsApp-submitted hostels, publish listings and control availability.</p></div><BadgeCheck size={30}/></div>
       <h3>Published / unavailable listings ({adminData.listings.length})</h3>
-      {adminData.listings.map((item) => <div className="cc-hostel__manage-row" key={item.id}><span><strong>{item.name}</strong><small>{item.area} · {money(item.rent_amount)}</small></span><span className="cc-hostel__status">{item.status}</span><button onClick={() => void updateStatus(item, item.status === "published" ? "unavailable" : "published")} disabled={busy === item.id}>{item.status === "published" ? "Mark unavailable" : "Republish"}</button><a href={shareLink(`Chuka Comrades Hostel Listing\n${item.name}\nLocation: ${item.area}${item.landmark ? `, near ${item.landmark}` : ""}\nRent: ${money(item.rent_amount)} / ${item.rent_period}\nRoom type: ${item.room_type}\nAvailable: ${item.available_rooms}\nContact: ${item.landlord_contact}\nBrowse on Chuka Comrades.`)} target="_blank" rel="noreferrer">Share to WhatsApp</a></div>)}
+      {adminData.listings.map((item) => <div className="cc-hostel__manage-row" key={item.id}><span><strong>{item.name}</strong><small>{item.area} · {money(item.rent_amount)}</small></span><span className="cc-hostel__status">{item.status}</span><button onClick={() => void updateStatus(item, item.status === "published" ? "unavailable" : "published")} disabled={busy === item.id}>{item.status === "published" ? "Mark unavailable" : "Republish"}</button><button onClick={() => void shareListing(item)}>Share to WhatsApp</button></div>)}
     </div>}
   </section>;
 }
