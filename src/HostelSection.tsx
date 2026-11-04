@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import type { User } from "firebase/auth";
-import { BadgeCheck, Building2, CalendarDays, Camera, CheckCircle2, ChevronRight, ExternalLink, MapPin, MessageCircle, Pencil, Phone, RefreshCw, ShieldCheck, Users } from "lucide-react";
+import { BadgeCheck, Building2, CalendarDays, Camera, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, MapPin, MessageCircle, Phone, RefreshCw, ShieldCheck, Users, X, ZoomIn } from "lucide-react";
 import { hostelApi, type HostelAdminData, type HostelListing, type HostelSettings } from "./lib/hostelApi";
 import "./HostelSection.css";
 
@@ -8,7 +9,6 @@ const money = (value: number) => `KSh ${Number(value).toLocaleString("en-KE")}`;
 const digits = (value: string) => value.replace(/\D/g, "");
 const waLink = (phone: string, message: string) => `https://wa.me/${digits(phone)}?text=${encodeURIComponent(message)}`;
 const shareLink = (message: string) => `https://wa.me/?text=${encodeURIComponent(message)}`;
-const HOSTEL_ADMIN_EMAIL = "sidneywafula30@gmail.com";
 
 export default function HostelSection({ user }: { user: User | null; onSignIn: () => void }) {
   const [tab, setTab] = useState<"browse" | "landlord" | "admin">("browse");
@@ -21,8 +21,6 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
     maxImagesPerHostel: 3,
   });
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminError, setAdminError] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
@@ -41,22 +39,17 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
   }, []);
 
   const loadAdmin = useCallback(async () => {
-    const isConfiguredAdmin = user?.email?.trim().toLowerCase() === HOSTEL_ADMIN_EMAIL;
-    if (!user || !isConfiguredAdmin) {
-      setIsAdmin(false); setAdminData(null); setAdminError(""); return;
-    }
-    // The client-side email check only reveals the admin interface. Apps Script still
-    // verifies the Firebase ID token and its own admin allowlist before any data change.
-    setIsAdmin(true);
+    if (!user) { setIsAdmin(false); setAdminData(null); return; }
     try {
       const result = await hostelApi.adminDashboard(user);
       setAdminData(result);
-      setAdminError("");
-    } catch (err) {
-      setAdminData({ listings: [] });
-      setAdminError(err instanceof Error ? err.message : "The admin dashboard could not be loaded.");
+      setIsAdmin(true);
+    } catch {
+      setIsAdmin(false);
+      setAdminData(null);
+      if (tab === "admin") setTab("browse");
     }
-  }, [user]);
+  }, [user, tab]);
 
   const refresh = useCallback(async () => {
     setLoading(true); setError("");
@@ -95,22 +88,9 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
     setBusy(listing.id); setError("");
     try {
       await hostelApi.updateListing(user, listing.id, { status });
-      await refresh(); setNotice(status === "unavailable" ? `${listing.name} was removed from the public directory. It can be restored later.` : `${listing.name} was republished.`);
+      await refresh(); setNotice(`${listing.name} status updated.`);
     } catch (err) { setError(err instanceof Error ? err.message : "Listing update failed."); }
     finally { setBusy(""); }
-  }
-
-  async function saveListingEdit(listing: HostelListing, updates: Record<string, unknown>) {
-    if (!user) return;
-    setBusy(`edit-${listing.id}`); setError(""); setNotice("");
-    try {
-      await hostelApi.updateListing(user, listing.id, updates);
-      setEditingId(null);
-      await refresh();
-      setNotice(`${listing.name} details updated successfully.`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update this hostel.");
-    } finally { setBusy(""); }
   }
 
   return <section className="cc-hostel" aria-label="Hostel directory">
@@ -169,16 +149,10 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
     </div>}
 
     {tab === "admin" && isAdmin && adminData && <div className="cc-hostel__admin">
-      <div className="cc-hostel__admin-heading"><div><span className="cc-hostel__eyebrow">ADMIN ONLY · {HOSTEL_ADMIN_EMAIL}</span><h2>Hostel management desk</h2><p>Add WhatsApp-submitted hostels, edit details, publish listings and remove listings from the public directory.</p></div><BadgeCheck size={30}/></div>
-      {adminError && <p className="cc-hostel__error" role="alert">Admin access check failed: {adminError} The admin controls are shown because this is the configured admin email, but the server must approve each save or update.</p>}
       <AdminCreateHostelForm user={user} busy={busy === "create"} maxImages={settings.maxImagesPerHostel} onCreate={createListing}/>
+      <div className="cc-hostel__admin-heading"><div><span className="cc-hostel__eyebrow">ADMIN ONLY</span><h2>Hostel management desk</h2><p>Add WhatsApp-submitted hostels, publish listings and control availability.</p></div><BadgeCheck size={30}/></div>
       <h3>Published / unavailable listings ({adminData.listings.length})</h3>
-      {adminData.listings.length === 0 && <p className="cc-hostel__empty">No listings were returned. If you already have hostels in the Sheet, use Refresh and check the admin access message above.</p>}
-      {adminData.listings.map((item) => <div key={item.id}>
-        <div className="cc-hostel__manage-row"><span><strong>{item.name}</strong><small>{item.area} · {money(item.rent_amount)}</small></span><span className="cc-hostel__status">{item.status}</span><button onClick={() => setEditingId(editingId === item.id ? null : item.id)} disabled={busy === `edit-${item.id}`}><Pencil size={14}/> {editingId === item.id ? "Close edit" : "Edit details"}</button><button onClick={() => void updateStatus(item, item.status === "published" ? "unavailable" : "published")} disabled={busy === item.id}>{item.status === "published" ? "Remove from directory" : "Restore listing"}</button><a href={shareLink(`Chuka Comrades Hostel Listing\n${item.name}\nLocation: ${item.area}${item.landmark ? `, near ${item.landmark}` : ""}\nRent: ${money(item.rent_amount)} / ${item.rent_period}\nRoom type: ${item.room_type}\nAvailable: ${item.available_rooms}\nContact: ${item.landlord_contact}\nBrowse on Chuka Comrades.`)} target="_blank" rel="noreferrer">Share to WhatsApp</a></div>
-        {editingId === item.id && <AdminEditHostelForm listing={item} busy={busy === `edit-${item.id}`} onSave={(updates) => saveListingEdit(item, updates)}/>}
-      </div>)}
-      <p className="cc-hostel__fineprint">“Remove from directory” marks a listing unavailable; it does not permanently erase the Google Sheets record. You can restore it later.</p>
+      {adminData.listings.map((item) => <div className="cc-hostel__manage-row" key={item.id}><span><strong>{item.name}</strong><small>{item.area} · {money(item.rent_amount)}</small></span><span className="cc-hostel__status">{item.status}</span><button onClick={() => void updateStatus(item, item.status === "published" ? "unavailable" : "published")} disabled={busy === item.id}>{item.status === "published" ? "Mark unavailable" : "Republish"}</button><a href={shareLink(`Chuka Comrades Hostel Listing\n${item.name}\nLocation: ${item.area}${item.landmark ? `, near ${item.landmark}` : ""}\nRent: ${money(item.rent_amount)} / ${item.rent_period}\nRoom type: ${item.room_type}\nAvailable: ${item.available_rooms}\nContact: ${item.landlord_contact}\nBrowse on Chuka Comrades.`)} target="_blank" rel="noreferrer">Share to WhatsApp</a></div>)}
     </div>}
   </section>;
 }
@@ -257,50 +231,59 @@ function AdminCreateHostelForm({ user, busy, maxImages, onCreate }: {
   </form>;
 }
 
-function AdminEditHostelForm({ listing, busy, onSave }: {
-  listing: HostelListing; busy: boolean; onSave: (updates: Record<string, unknown>) => Promise<void>;
-}) {
-  const [form, setForm] = useState({
-    name: listing.name, area: listing.area, landmark: listing.landmark || "", location_url: listing.location_url || "",
-    rent_amount: String(listing.rent_amount), rent_period: listing.rent_period, room_type: listing.room_type,
-    total_rooms: listing.total_rooms == null ? "" : String(listing.total_rooms), available_rooms: String(listing.available_rooms),
-    available_from: listing.available_from || "", facilities: listing.facilities.join(", "), description: listing.description || "",
-    contact_name: listing.contact_name || "", landlord_contact: listing.landlord_contact,
-  });
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    await onSave({
-      ...form, rent_amount: Number(form.rent_amount), total_rooms: form.total_rooms ? Number(form.total_rooms) : null,
-      available_rooms: Number(form.available_rooms), facilities: form.facilities.split(",").map((v) => v.trim()).filter(Boolean),
-    });
-  }
-  return <form className="cc-hostel__form cc-hostel__admin-create" onSubmit={submit}>
-    <div className="cc-hostel__form-heading"><div><h3>Edit {listing.name}</h3><p>Update the listing details. Existing hostel photos are kept unchanged.</p></div></div>
-    <div className="cc-hostel__form-grid">
-      <label>Hostel name<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>
-      <label>Landlord / caretaker name<input required value={form.contact_name} onChange={e=>setForm({...form,contact_name:e.target.value})}/></label>
-      <label>Area / location<input required value={form.area} onChange={e=>setForm({...form,area:e.target.value})}/></label>
-      <label>Nearby landmark<input value={form.landmark} onChange={e=>setForm({...form,landmark:e.target.value})}/></label>
-      <label>Google Maps link<input type="url" value={form.location_url} onChange={e=>setForm({...form,location_url:e.target.value})}/></label>
-      <label>Rent (KSh)<input type="number" min="0" required value={form.rent_amount} onChange={e=>setForm({...form,rent_amount:e.target.value})}/></label>
-      <label>Rent period<select value={form.rent_period} onChange={e=>setForm({...form,rent_period:e.target.value as "month" | "semester"})}><option value="month">Per month</option><option value="semester">Per semester</option></select></label>
-      <label>Room type<input required value={form.room_type} onChange={e=>setForm({...form,room_type:e.target.value})}/></label>
-      <label>Total rooms<input type="number" min="0" value={form.total_rooms} onChange={e=>setForm({...form,total_rooms:e.target.value})}/></label>
-      <label>Available rooms<input type="number" min="0" required value={form.available_rooms} onChange={e=>setForm({...form,available_rooms:e.target.value})}/></label>
-      <label>Available from<input type="date" value={form.available_from} onChange={e=>setForm({...form,available_from:e.target.value})}/></label>
-      <label>Landlord WhatsApp / call number<input required type="tel" value={form.landlord_contact} onChange={e=>setForm({...form,landlord_contact:e.target.value})}/></label>
-      <label className="cc-hostel__wide">Facilities<input value={form.facilities} onChange={e=>setForm({...form,facilities:e.target.value})}/></label>
-      <label className="cc-hostel__wide">Description<textarea rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label>
-    </div>
-    <button className="cc-hostel__primary" disabled={busy}>{busy ? "Saving changes…" : "Save hostel changes"}</button>
-  </form>;
+function HostelGallery({ name, urls }: { name: string; urls: string[] }) {
+  const [openAt, setOpenAt] = useState<number | null>(null);
+  if (urls.length === 0) return <div className="cc-hostel__gallery"><div className="cc-hostel__no-image">No photos available</div></div>;
+  const thumbs = urls.slice(1);
+  return <div className="cc-hostel__gallery">
+    <button type="button" className="cc-hostel__gallery-main" onClick={() => setOpenAt(0)} aria-label={`View photos of ${name}`}>
+      <img src={urls[0]} alt={`${name} hostel`} loading="lazy"/>
+      <span className="cc-hostel__gallery-badge"><ZoomIn size={14}/> {urls.length > 1 ? `${urls.length} photos` : "View photo"}</span>
+    </button>
+    {thumbs.length > 0 && <div className="cc-hostel__gallery-thumbs">
+      {thumbs.map((url, index) => <button type="button" key={url} onClick={() => setOpenAt(index + 1)} aria-label={`View photo ${index + 2} of ${name}`}><img src={url} alt="" loading="lazy"/></button>)}
+    </div>}
+    {openAt !== null && <ImageLightbox name={name} urls={urls} start={openAt} onClose={() => setOpenAt(null)}/>}
+  </div>;
+}
+
+function ImageLightbox({ name, urls, start, onClose }: { name: string; urls: string[]; start: number; onClose: () => void }) {
+  const [index, setIndex] = useState(start);
+  const total = urls.length;
+  const prev = useCallback(() => setIndex((i) => (i - 1 + total) % total), [total]);
+  const next = useCallback(() => setIndex((i) => (i + 1) % total), [total]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+      else if (event.key === "ArrowLeft" && total > 1) prev();
+      else if (event.key === "ArrowRight" && total > 1) next();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = previousOverflow; };
+  }, [onClose, prev, next, total]);
+
+  return createPortal(
+    <div className="cc-lightbox" role="dialog" aria-modal="true" aria-label={`${name} photos`} onClick={onClose}>
+      <button type="button" className="cc-lightbox__close" onClick={onClose} aria-label="Close photo viewer"><X size={22}/></button>
+      {total > 1 && <button type="button" className="cc-lightbox__nav is-prev" onClick={(e) => { e.stopPropagation(); prev(); }} aria-label="Previous photo"><ChevronLeft size={26}/></button>}
+      <figure className="cc-lightbox__figure" onClick={(e) => e.stopPropagation()}>
+        <img src={urls[index]} alt={`${name} hostel photo ${index + 1}`}/>
+        <figcaption>{name}{total > 1 ? ` · ${index + 1} / ${total}` : ""}</figcaption>
+      </figure>
+      {total > 1 && <button type="button" className="cc-lightbox__nav is-next" onClick={(e) => { e.stopPropagation(); next(); }} aria-label="Next photo"><ChevronRight size={26}/></button>}
+    </div>,
+    document.body,
+  );
 }
 
 function HostelCard({ listing, adminWhatsApp }: { listing: HostelListing; adminWhatsApp: string }) {
   const message = `Hello ${listing.contact_name || "Landlord"}, I saw ${listing.name} on Chuka Comrades. Is accommodation still available?`;
   const adminMessage = `Hello Chuka Comrades admin, I am interested in ${listing.name} in ${listing.area}. Please help me connect with the landlord.`;
   return <article className="cc-hostel__card">
-    <div className="cc-hostel__images">{listing.image_urls.slice(0,3).map((url) => <img key={url} src={url} alt={`${listing.name} hostel`} loading="lazy"/>)}{listing.image_urls.length === 0 && <div className="cc-hostel__no-image">No photos available</div>}</div>
+    <HostelGallery name={listing.name} urls={listing.image_urls.slice(0,3)}/>
     <div className="cc-hostel__card-body"><div className="cc-hostel__title"><h3>{listing.name}</h3>{listing.verified && <span><ShieldCheck size={13}/> Verified</span>}</div>
       <p className="cc-hostel__location"><MapPin size={15}/> {listing.area}{listing.landmark ? ` · Near ${listing.landmark}` : ""}</p>
       <strong className="cc-hostel__rent">{money(listing.rent_amount)} <small>/ {listing.rent_period}</small></strong>
