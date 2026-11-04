@@ -598,3 +598,11 @@ button:focus-visible, a:focus-visible { outline: 3px solid #8bb99a; outline-offs
   .loading-mark { width: 104px; height: 104px; border-radius: 26px; }
   .loading-tagline { font-size: 14px; }
 }
+
+/* Hostels & Roommates landing tile: photo background with a dark overlay for legibility */
+.onepage-community-card.hostel-community-link{position:relative;overflow:hidden;color:#fff;border-color:#123b35;background-color:#123b35;background-image:linear-gradient(100deg,#0b2b25f2 0%,#123b35d0 55%,#123b3590 100%),var(--hostel-bg,none);background-size:cover,cover;background-position:center,center;background-repeat:no-repeat}
+.onepage-community-card.hostel-community-link:hover{border-color:#25d366}
+.hostel-community-link .onepage-community-copy strong{color:#fff;text-shadow:0 1px 4px #00000066}
+.hostel-community-link .onepage-community-copy small{color:#e3f1eb}
+.hostel-community-link>.service-icon{background:#ffffffe6}
+.hostel-community-link>svg:last-child{color:#fff}

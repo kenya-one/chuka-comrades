@@ -1,9 +1,9 @@
 .cc-hostel{width:100%;max-width:1180px;margin:0 auto;color:var(--text,#172033);font:inherit;display:grid;gap:18px}
 .cc-hostel *{box-sizing:border-box}
-.cc-hostel__hero{padding:clamp(22px,4vw,36px);border-radius:20px;color:#fff;background:linear-gradient(125deg,#123b35,#23745e);box-shadow:0 12px 30px #123b351c}
+.cc-hostel__hero{padding:clamp(22px,4vw,36px);border-radius:20px;color:#fff;background-color:#123b35;background-image:linear-gradient(105deg,#0b2b25f0 0%,#123b35d9 42%,#23745e80 100%),var(--hostel-bg,none),linear-gradient(125deg,#123b35,#23745e);background-size:cover,cover,cover;background-position:center,center,center;background-repeat:no-repeat;box-shadow:0 12px 30px #123b351c;position:relative;overflow:hidden}
 .cc-hostel__eyebrow{display:inline-block;font-size:.7rem;letter-spacing:.14em;font-weight:850;opacity:.78}
 .cc-hostel__hero h1{font-size:clamp(1.65rem,4vw,2.45rem);line-height:1.1;margin:9px 0}
-.cc-hostel__hero p{max-width:680px;line-height:1.6;margin:0;color:#e3f1eb}
+.cc-hostel__hero p{max-width:680px;line-height:1.6;margin:0;color:#e3f1eb}.cc-hostel__hero h1,.cc-hostel__hero p,.cc-hostel__eyebrow{text-shadow:0 1px 8px #00000066}.cc-hostel__eyebrow{opacity:.9}
 .cc-hostel__hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
 .cc-hostel__hero-actions button,.cc-hostel__primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;background:#fff;color:#155642;padding:11px 15px;font:inherit;font-weight:750;cursor:pointer}
 .cc-hostel__hero-actions .is-light{background:#d7eee4;color:#124b3b}
@@ -66,3 +66,10 @@
   .cc-lightbox__nav.is-prev{left:calc(50% - 54px)}.cc-lightbox__nav.is-next{right:calc(50% - 54px)}
   .cc-lightbox__figure img{max-height:calc(100dvh - 170px)}
 }
+
+/* Official WhatsApp logo badge on the group links */
+.cc-hostel__wa{flex:0 0 auto;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#e9f9ef;border:1px solid #cdeedb}
+.cc-hostel__groups a:hover .cc-hostel__wa{background:#d9f5e4}
+.cc-hostel__groups a{transition:border-color .15s,box-shadow .15s}
+.cc-hostel__groups a:not(.is-disabled):hover{border-color:#25D366;box-shadow:0 4px 14px #25d36622}
+@media(max-width:680px){.cc-hostel__hero{background-position:center,65% center,center}}
