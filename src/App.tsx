@@ -454,7 +454,13 @@ function App() {
     <main className="site-shell onepage-shell">
       <header className="site-header onepage-header">
         <a className="brand" href="#home" onClick={() => { setActiveView("home"); setActiveCommunity(null); }} aria-label="Chuka Comrades home">
-          <span className="brand-crest-wrap"><img className="brand-crest" src="/chuka%20crest.jfif" alt="Chuka University crest" /></span>
+          <span className="brand-crest-wrap">
+  <img
+    className="brand-crest"
+    src={`${import.meta.env.BASE_URL}chukalogo.jfif`}
+    alt="Chuka University crest"
+  />
+</span>
           <span className="brand-copy"><strong>Chuka Comrades</strong><small>Your campus. Your community.</small></span>
         </a>
         <nav className="onepage-nav" aria-label="Main navigation">
