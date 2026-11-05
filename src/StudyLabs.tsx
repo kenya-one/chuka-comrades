@@ -1,106 +1,175 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
-import { ArrowLeft, ArrowUpRight, BookOpen, BriefcaseBusiness, CalendarDays, Download, FileUp, Lightbulb, LoaderCircle, MessageCircle, Search, ShieldCheck, Users } from 'lucide-react';
-import { bootstrapStudyLabs, fileToBase64, jsonp, listStudyItems, postStudyAction, type StudyItem } from './lib/studyLabs';
-import { AdminPanel, MyUploads } from './StudyLabsAdmin';
+import { ArrowLeft, ArrowUpRight, BookOpen, BriefcaseBusiness, CalendarDays, Download, ExternalLink, FileUp, Lightbulb, LoaderCircle, MessageCircle, Plus, Search, ShieldCheck, UserPlus, Users } from 'lucide-react';
+import { bootstrapStudyLabs, jsonp, listStudyItems, NOTES_COVER, openDownload, postStudyAction, str, type StudyItem } from './lib/studyLabs';
+import { AdminPanel } from './StudyLabsAdmin';
+import { MyUploads, type MineSection } from './StudyLabsMine';
+import { ShareForm, SuggestForm } from './StudyLabsShare';
+import BuyDialog from './StudyLabsBuy';
+import { PartnerRequestDialog } from './StudyLabsPartners';
 import './StudyLabs.css';
+import './StudyLabsV2.css';
 
 type Props = { user: User | null; onBack: () => void; onSignIn: () => void };
-type PublicTab = 'Resources' | 'Products' | 'StudyPartners' | 'Opportunities' | 'Events' | 'WhatsAppGroups';
-type Tab = PublicTab | 'MyUploads' | 'Admin';
-const tabs: { key: PublicTab; label: string; icon: typeof BookOpen }[] = [
+type ListTab = 'Resources' | 'Products' | 'StudyPartners' | 'Opportunities' | 'Events';
+type Tab = ListTab | 'WhatsApp' | 'MyUploads' | 'Admin';
+const tabs: { key: Tab; label: string; icon: typeof BookOpen }[] = [
   { key: 'Resources', label: 'Materials', icon: BookOpen },
   { key: 'Products', label: 'Project Hub', icon: Lightbulb },
   { key: 'StudyPartners', label: 'Study partners', icon: Users },
   { key: 'Opportunities', label: 'Opportunities', icon: BriefcaseBusiness },
   { key: 'Events', label: 'Events', icon: CalendarDays },
-  { key: 'WhatsAppGroups', label: 'WhatsApp groups', icon: MessageCircle },
+  { key: 'WhatsApp', label: 'WhatsApp', icon: MessageCircle },
 ];
-const text = (item: StudyItem, ...keys: string[]) => { for (const key of keys) if (item[key] !== undefined && item[key] !== null && String(item[key])) return String(item[key]); return ''; };
+const isListTab = (t: Tab): t is ListTab => ['Resources', 'Products', 'StudyPartners', 'Opportunities', 'Events'].includes(t);
+const CHIPS: Partial<Record<ListTab, string[]>> = { Resources: ['All', 'Notes', 'Past paper', 'Revision guide'], Products: ['All', 'Project', 'Digital product', 'Template', 'Free'] };
+const EMPTY: Record<ListTab, string> = { Resources: 'No approved study materials yet.', Products: 'Nothing in the Project Hub yet.', StudyPartners: 'No study partner profiles are available yet.', Opportunities: 'No active opportunities at the moment.', Events: 'No upcoming learning events have been listed.' };
 
 export default function StudyLabs({ user, onBack, onSignIn }: Props) {
   const [tab, setTab] = useState<Tab>('Resources');
   const [items, setItems] = useState<StudyItem[]>([]);
   const [query, setQuery] = useState('');
-  const [communityUrl, setCommunityUrl] = useState('');
+  const [chip, setChip] = useState('All');
+  const [info, setInfo] = useState({ communityUrl: '', mpesaNumber: '', mpesaName: '' });
   const [officialLinks, setOfficialLinks] = useState<StudyItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [showUpload, setShowUpload] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [showSuggest, setShowSuggest] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [mine, setMine] = useState<MineSection>('submissions');
+  const [orders, setOrders] = useState<Record<string, string>>({});
+  const [buying, setBuying] = useState<StudyItem | null>(null);
+  const [requesting, setRequesting] = useState<StudyItem | null>(null);
 
-  async function load(nextTab = tab, q = query) {
-    if (nextTab === 'MyUploads' || nextTab === 'Admin') { setLoading(false); return; }
+  const load = useCallback(async (nextTab: Tab, q: string) => {
+    if (!isListTab(nextTab)) { setLoading(false); return; }
     setLoading(true); setError('');
     try { setItems(await listStudyItems(nextTab, q)); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load Study Labs.'); }
     finally { setLoading(false); }
-  }
-  useEffect(() => {
-    bootstrapStudyLabs().then((data) => {
-      setCommunityUrl(String(data.whatsappCommunityUrl || ''));
-      setOfficialLinks((data.officialLinks as StudyItem[]) || []);
-    }).catch((e) => setError(e instanceof Error ? e.message : 'Could not connect to Study Labs.'));
-    void load('Resources', '');
   }, []);
+
+  useEffect(() => {
+    bootstrapStudyLabs().then((d) => {
+      setInfo({ communityUrl: String(d.whatsappCommunityUrl || ''), mpesaNumber: String(d.mpesaNumber || ''), mpesaName: String(d.mpesaName || '') });
+      setOfficialLinks((d.officialLinks as StudyItem[]) || []);
+    }).catch((e) => setError(e instanceof Error ? e.message : 'Could not connect to Study Labs.'));
+  }, []);
+  useEffect(() => { setChip('All'); setShowSuggest(false); }, [tab]);
+  useEffect(() => { const timer = window.setTimeout(() => void load(tab, query), 250); return () => window.clearTimeout(timer); }, [tab, query, load]);
+
+  const refreshOrders = useCallback(async () => {
+    if (!user) { setOrders({}); return; }
+    try { const r = await postStudyAction(user, { action: 'myOrders' }); const map: Record<string, string> = {}; ((r.items as StudyItem[]) || []).forEach((o) => { const pid = str(o, 'product_id'); if (map[pid] !== 'verified') map[pid] = str(o, 'status'); }); setOrders(map); }
+    catch { setOrders({}); }
+  }, [user]);
   useEffect(() => {
     setIsAdmin(false);
-    if (!user) { if (tab === 'Admin' || tab === 'MyUploads') setTab('Resources'); return; }
+    if (!user) { setTab((t) => (t === 'Admin' || t === 'MyUploads' ? 'Resources' : t)); setOrders({}); return; }
     postStudyAction(user, { action: 'whoami' }).then((r) => setIsAdmin(!!r.admin)).catch(() => setIsAdmin(false));
-  }, [user]);
-  useEffect(() => { const timer = window.setTimeout(() => void load(tab, query), 250); return () => window.clearTimeout(timer); }, [tab, query]);
+    void refreshOrders();
+  }, [user, refreshOrders]);
 
-  async function submitUpload(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (!user) { onSignIn(); return; }
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement); const file = form.get('file');
-    if (!(file instanceof File) || !file.size) { setError('Choose a file to upload.'); return; }
-    setBusy(true); setError(''); setMessage('');
-    try {
-      const fileBase64 = await fileToBase64(file);
-      const product = form.get('type') === 'product';
-      await postStudyAction(user, product ? {
-        action: 'createProduct', title: form.get('title'), description: form.get('description'), category: form.get('category') || 'Project ideas', priceKes: form.get('priceKes'), fileName: file.name, mimeType: file.type || 'application/octet-stream', fileBase64,
-      } : {
-        action: 'uploadResource', title: form.get('title'), description: form.get('description'), category: form.get('category') || 'Notes', course: form.get('course'), unitCode: form.get('unitCode'), yearOfStudy: form.get('yearOfStudy'), semester: form.get('semester'), fileName: file.name, mimeType: file.type || 'application/octet-stream', fileBase64,
-      });
-      setMessage('Submitted successfully. Your upload is awaiting Study Labs admin review.'); setShowUpload(false); formElement.reset();
-    } catch (e) { setError(e instanceof Error ? e.message : 'Upload failed.'); }
-    finally { setBusy(false); }
+  const requireUser = (fn: () => void) => { if (!user) { onSignIn(); return; } fn(); };
+  const flash = (m: string) => { setMessage(m); setError(''); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+  async function downloadFree(id: string) {
+    setError('');
+    try { await openDownload(async () => { const d = await jsonp<{ ok: boolean; url?: string; error?: string }>({ action: 'download', id }); if (!d.ok || !d.url) throw new Error(d.error || 'Download is unavailable.'); return d.url; }); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not open this file.'); }
+  }
+  async function downloadPurchased(id: string) {
+    if (!user) return; setError('');
+    try { await openDownload(async () => { const r = await postStudyAction(user, { action: 'downloadProduct', id }); return String(r.url); }); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not open this file.'); }
+  }
+  async function report(type: string, id: string) {
+    if (!user) { onSignIn(); return; }
+    const reason = window.prompt('What is wrong with this item? (e.g. wrong content, copyrighted, spam)'); if (!reason || !reason.trim()) return;
+    try { await postStudyAction(user, { action: 'createReport', itemType: type, itemId: id, reason: reason.trim() }); flash('Thanks — the admin will review your report.'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not send the report.'); }
   }
 
-  async function download(item: StudyItem) {
-    try {
-      const id = text(item, 'id');
-      const data = await jsonp<{ok:boolean;url?:string;error?:string}>({ action: 'download', id });
-      if (!data.ok || !data.url) throw new Error(data.error || 'Download is unavailable.');
-      window.open(data.url, '_blank', 'noopener,noreferrer');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not open this file.'); }
+  const visible = useMemo(() => {
+    if (chip === 'All') return items;
+    if (tab === 'Resources') return items.filter((i) => str(i, 'category').toLowerCase() === chip.toLowerCase());
+    if (tab === 'Products') return chip === 'Free' ? items.filter((i) => Number(i.price_kes) === 0) : items.filter((i) => str(i, 'type', 'category').toLowerCase() === chip.toLowerCase());
+    return items;
+  }, [items, chip, tab]);
+
+  const heading = tab === 'MyUploads' ? 'My uploads' : tab === 'Admin' ? 'Admin review' : tabs.find((t) => t.key === tab)?.label;
+
+  function resourceCard(item: StudyItem) {
+    const id = str(item, 'id');
+    return <article className="slx-card" key={id}>
+      <div className="slx-cover"><img src={NOTES_COVER} alt="" loading="lazy" /><span className="slx-badge">{str(item, 'category') || 'Notes'}</span></div>
+      <div className="slx-body"><h3>{str(item, 'title') || 'Untitled'}</h3>{str(item, 'description') && <p>{str(item, 'description')}</p>}
+        <div className="slx-meta">{[str(item, 'course'), str(item, 'unit_code'), str(item, 'year_of_study') && `Year ${str(item, 'year_of_study')}`].filter(Boolean).join(' · ')}</div>
+        <div className="slx-foot"><button className="sl-card-link" onClick={() => void downloadFree(id)}><Download size={15} /> Download</button><button className="slx-report" onClick={() => void report('Resource', id)}>Report</button></div></div>
+    </article>;
   }
 
-  const emptyText = useMemo(() => ({ Resources: 'No approved study materials yet.', Products: 'No project products have been published yet.', StudyPartners: 'No study partner profiles are available yet.', Opportunities: 'No active opportunities at the moment.', Events: 'No upcoming learning events have been listed.', WhatsAppGroups: 'No WhatsApp groups have been published yet.' }[tab as PublicTab]), [tab]);
+  function productCard(item: StudyItem) {
+    const id = str(item, 'id'); const price = Number(item.price_kes) || 0; const state = orders[id]; const cover = str(item, 'cover_url');
+    return <article className="slx-card" key={id}>
+      <div className="slx-cover">{cover && <img src={cover} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}<span className="slx-badge">{str(item, 'type', 'category') || 'Project'}</span><span className="slx-price-tag">{price === 0 ? 'Free' : `KSh ${price}`}</span></div>
+      <div className="slx-body"><h3>{str(item, 'title') || 'Untitled'}</h3>{str(item, 'description') && <p>{str(item, 'description')}</p>}
+        {str(item, 'course') && <div className="slx-meta">{str(item, 'course')}</div>}
+        {str(item, 'tags') && <div className="slx-tags">{str(item, 'tags').split(',').map((t) => t.trim()).filter(Boolean).slice(0, 4).map((t) => <span key={t}>{t}</span>)}</div>}
+        <div className="slx-foot">
+          {price === 0 ? <button className="slx-buy" onClick={() => void downloadFree(id)}><Download size={14} /> Download free</button>
+            : state === 'verified' ? <button className="slx-buy" onClick={() => void downloadPurchased(id)}><Download size={14} /> Download</button>
+            : state === 'pending' ? <span className="slx-status">Verifying payment</span>
+            : <button className="slx-buy" onClick={() => requireUser(() => setBuying(item))}>Buy · KSh {price}</button>}
+          {str(item, 'demo_url') && <a className="sl-card-link" href={str(item, 'demo_url')} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Demo</a>}
+          <button className="slx-report" onClick={() => void report('Product', id)}>Report</button></div></div>
+    </article>;
+  }
+
+  function simpleCard(item: StudyItem) {
+    const id = str(item, 'id'); const title = str(item, 'title', 'display_name') || 'Untitled'; const link = str(item, 'application_url', 'registration_url');
+    return <article className="sl-card" key={id || title}>
+      <div className="sl-card-icon">{tab === 'StudyPartners' ? <Users /> : tab === 'Events' ? <CalendarDays /> : <BriefcaseBusiness />}</div>
+      <h3>{title}</h3>{str(item, 'description', 'intro') && <p>{str(item, 'description', 'intro')}</p>}
+      <div className="sl-meta">{[str(item, 'course', 'organisation', 'organiser', 'location'), str(item, 'year_of_study') && `Year ${str(item, 'year_of_study')}`, str(item, 'units'), str(item, 'study_mode'), str(item, 'availability'), str(item, 'deadline', 'event_date').slice(0, 10)].filter(Boolean).join(' · ')}</div>
+      {(tab === 'Opportunities' || tab === 'Events') && link && <a className="sl-card-link" href={link} target="_blank" rel="noreferrer">{tab === 'Events' ? 'Register' : 'Apply'} <ArrowUpRight size={14} /></a>}
+      {tab === 'StudyPartners' && <button className="slx-buy" onClick={() => requireUser(() => setRequesting(item))}><UserPlus size={14} /> Request to study together</button>}
+    </article>;
+  }
+
+  const toolbar = isListTab(tab) && (tab === 'Opportunities' || tab === 'Events' || tab === 'StudyPartners') ? <div className="slx-toolbar">
+    <p>{tab === 'StudyPartners' ? 'Find someone to study with. Numbers stay private until a request is accepted.' : `Know of ${tab === 'Events' ? 'an event' : 'an opportunity'}? Suggest it — the admin reviews before it goes live.`}</p>
+    {tab === 'StudyPartners' ? <button className="slx-btn" onClick={() => requireUser(() => { setMine('profile'); setTab('MyUploads'); })}><Plus size={15} /> My study profile</button>
+      : <button className="slx-btn" onClick={() => requireUser(() => setShowSuggest((v) => !v))}><Plus size={15} /> Suggest {tab === 'Events' ? 'an event' : 'an opportunity'}</button>}
+  </div> : null;
+
   return <main className="study-labs-page">
-    <header className="sl-topbar"><button className="sl-back" onClick={onBack}><ArrowLeft size={17}/> Chuka Comrades</button><span className="sl-brand"><img src="/chuka%20crest.jfif" alt=""/> STUDY LABS</span><span className="sl-user">{user ? user.displayName || user.email : <button onClick={onSignIn}>Sign in</button>}</span></header>
-    <section className="sl-hero"><div className="sl-kicker">CHUKA COMRADES · ACADEMIC COMMUNITY</div><h1>Learn. Share. <span>Grow.</span></h1><p>Find learning materials, project resources, study partners and opportunities.</p><div className="sl-search"><Search size={19}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search notes, units, projects, opportunities…" /></div><div className="sl-actions"><button className="sl-primary" onClick={() => user ? setShowUpload(v => !v) : onSignIn()}><FileUp size={17}/> Share a resource</button>{communityUrl && <a className="sl-whatsapp" href={communityUrl} target="_blank" rel="noreferrer"><MessageCircle size={17}/> Join WhatsApp community <ArrowUpRight size={15}/></a>}</div></section>
+    <header className="sl-topbar"><button className="sl-back" onClick={onBack}><ArrowLeft size={17} /> Chuka Comrades</button><span className="sl-brand"><img src="/chuka%20crest.jfif" alt="" /> STUDY LABS</span><span className="sl-user">{user ? user.displayName || user.email : <button onClick={onSignIn}>Sign in</button>}</span></header>
+    <section className="sl-hero"><div className="sl-kicker">CHUKA COMRADES · ACADEMIC COMMUNITY</div><h1>Learn. Share. <span>Grow.</span></h1><p>Find learning materials, project resources, study partners and opportunities.</p>
+      <div className="sl-search"><Search size={19} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes, units, projects, opportunities…" /></div>
+      <div className="sl-actions"><button className="sl-primary" onClick={() => requireUser(() => setShowShare((v) => !v))}><FileUp size={17} /> Share</button>{info.communityUrl && <a className="sl-whatsapp" href={info.communityUrl} target="_blank" rel="noreferrer"><MessageCircle size={17} /> Join WhatsApp group <ArrowUpRight size={15} /></a>}</div></section>
     {message && <p className="sl-notice">{message}</p>}{error && <p className="sl-error">{error}</p>}
-    {showUpload && <form className="sl-upload" onSubmit={submitUpload}><div className="sl-upload-head"><h2>Share with Study Labs</h2><button type="button" onClick={() => setShowUpload(false)}>Close</button></div><label>Submission type<select name="type"><option value="resource">Free study material</option><option value="product">Paid digital product</option></select></label><label>Title<input name="title" required maxLength={120}/></label><label>Description<textarea name="description" rows={3}/></label><div className="sl-form-grid"><label>Category<input name="category" placeholder="Notes, past papers, project ideas"/></label><label>Course<input name="course" placeholder="e.g. BSc Computer Science"/></label><label>Unit code<input name="unitCode" placeholder="e.g. CSC 210"/></label><label>Year of study<input name="yearOfStudy" placeholder="e.g. 2"/></label><label>Semester<input name="semester" placeholder="e.g. 1"/></label><label>Price (KSh, paid products only)<input name="priceKes" type="number" min="1"/></label></div><label>Choose file<input name="file" type="file" required/></label><p className="sl-hint">Maximum 12 MB. Uploads are checked by the Study Labs admin before publication. Only share material you own or have permission to distribute.</p><button className="sl-primary" disabled={busy}>{busy ? <><LoaderCircle className="sl-spin" size={17}/> Uploading…</> : 'Submit for review'}</button></form>}
-    <nav className="sl-tabs">{tabs.map(({key,label,icon:Icon}) => <button key={key} className={tab===key?'active':''} onClick={() => setTab(key)}><Icon size={17}/>{label}</button>)}<button className={tab==='MyUploads'?'active':''} onClick={() => setTab('MyUploads')}><FileUp size={17}/>My uploads</button>{isAdmin && <button className={tab==='Admin'?'active':''} onClick={() => setTab('Admin')}><ShieldCheck size={17}/>Admin</button>}</nav>
-    <section className="sl-content"><div className="sl-content-heading"><div><span className="sl-kicker">EXPLORE</span><h2>{tab==='MyUploads'?'My uploads':tab==='Admin'?'Admin review':tabs.find(t=>t.key===tab)?.label}</h2></div>{tab==='Resources' && <span className="sl-free-tag">Free sharing</span>}</div>
-      {tab==='MyUploads' ? <MyUploads user={user} onSignIn={onSignIn}/> : tab==='Admin' && user && isAdmin ? <AdminPanel user={user}/> : loading ? <div className="sl-loading"><LoaderCircle className="sl-spin"/> Loading…</div> : items.length ? <div className="sl-cards">{items.map((item) => {
-        const title = text(item,'title','display_name') || 'Untitled'; const desc = text(item,'description','intro'); const link = text(item,'application_url','registration_url','invite_url','url'); const id = text(item,'id');
-        return <article className="sl-card" key={id || title}><div className="sl-card-icon">{tab==='Resources'?<BookOpen/>:tab==='Products'?<Lightbulb/>:tab==='StudyPartners'?<Users/>:tab==='WhatsAppGroups'?<MessageCircle/>:tab==='Events'?<CalendarDays/>:<BriefcaseBusiness/>}</div><h3>{title}</h3>{desc && <p>{desc}</p>}<div className="sl-meta">{text(item,'course','unit_code','organisation','organiser','location','category')}{text(item,'year_of_study') ? ` · Year ${text(item,'year_of_study')}` : ''}{text(item,'price_kes') ? ` · KSh ${text(item,'price_kes')}` : ''}</div>
-          {tab==='Resources' && <button className="sl-card-link" onClick={() => void download(item)}><Download size={15}/> Download</button>}
-          {tab==='Products' && <span className="sl-card-link sl-muted">KSh {text(item,'price_kes')} · Contact admin to purchase</span>}
-          {(tab==='Opportunities'||tab==='Events') && link && <a className="sl-card-link" href={link} target="_blank" rel="noreferrer">{tab==='Events'?'Register':'Apply'} <ArrowUpRight size={14}/></a>}
-          {tab==='WhatsAppGroups' && link && <a className="sl-card-link" href={link} target="_blank" rel="noreferrer"><MessageCircle size={15}/> Join group <ArrowUpRight size={14}/></a>}
-          {tab==='StudyPartners' && <span className="sl-hint">Connect through your course WhatsApp group. Personal contact details are kept private.</span>}
-        </article>;
-      })}</div> : <div className="sl-empty"><BookOpen size={28}/><strong>{emptyText}</strong><p>New approved listings will appear here.</p></div>}
+    {showShare && user && <ShareForm user={user} onClose={() => setShowShare(false)} onDone={(m) => { setShowShare(false); setMine('submissions'); flash(m); }} />}
+    <nav className="sl-tabs">{tabs.map(({ key, label, icon: Icon }) => <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}><Icon size={17} />{label}</button>)}<button className={tab === 'MyUploads' ? 'active' : ''} onClick={() => setTab('MyUploads')}><FileUp size={17} />My uploads</button>{isAdmin && <button className={tab === 'Admin' ? 'active' : ''} onClick={() => setTab('Admin')}><ShieldCheck size={17} />Admin</button>}</nav>
+    <section className="sl-content"><div className="sl-content-heading"><div><span className="sl-kicker">EXPLORE</span><h2>{heading}</h2></div>{tab === 'Resources' && <span className="sl-free-tag">Free sharing</span>}</div>
+      {tab === 'WhatsApp' ? <div className="slx-wa"><MessageCircle size={34} /><h3>Join the Chuka Study Labs group</h3><p>One WhatsApp group for all Study Labs members. The admin posts announcements, new notes, events and opportunities here.</p>{info.communityUrl ? <a href={info.communityUrl} target="_blank" rel="noreferrer">Join on WhatsApp <ArrowUpRight size={16} /></a> : <small>The group link will be added soon.</small>}<small>Group is admin-only. To chat with other students, use Study partners.</small></div>
+        : tab === 'MyUploads' ? <MyUploads user={user} onSignIn={onSignIn} section={mine} onSection={setMine} />
+        : tab === 'Admin' && user && isAdmin ? <AdminPanel user={user} />
+        : <>
+          {toolbar}
+          {showSuggest && user && (tab === 'Opportunities' || tab === 'Events') && <SuggestForm user={user} table={tab} onClose={() => setShowSuggest(false)} onDone={(m) => { setShowSuggest(false); flash(m); }} />}
+          {CHIPS[tab as ListTab] && <div className="slx-chips">{CHIPS[tab as ListTab]!.map((c) => <button key={c} className={chip === c ? 'active' : ''} onClick={() => setChip(c)}>{c}</button>)}</div>}
+          {loading ? <div className="sl-loading"><LoaderCircle className="sl-spin" /> Loading…</div>
+            : visible.length ? <div className="sl-cards">{visible.map((item) => (tab === 'Resources' ? resourceCard(item) : tab === 'Products' ? productCard(item) : simpleCard(item)))}</div>
+            : <div className="sl-empty"><BookOpen size={28} /><strong>{isListTab(tab) ? EMPTY[tab] : ''}</strong><p>New approved listings will appear here.</p></div>}
+        </>}
     </section>
-    <section className="sl-whatsapp-panel"><MessageCircle size={25}/><div><h2>WhatsApp is where the community connects.</h2><p>Join the main Study Labs community for questions, announcements and peer support.</p></div>{communityUrl && <a href={communityUrl} target="_blank" rel="noreferrer">Join community <ArrowUpRight size={15}/></a>}</section>
-    <section className="sl-official"><h2>Official Chuka learning links</h2><div>{officialLinks.map((link) => <a key={text(link,'id','title')} href={text(link,'url')} target="_blank" rel="noreferrer">{text(link,'title')} <ArrowUpRight size={14}/></a>)}<a href="https://odel.chuka.ac.ke/" target="_blank" rel="noreferrer">Chuka E-learning <ArrowUpRight size={14}/></a><a href="https://library.chuka.ac.ke/" target="_blank" rel="noreferrer">Chuka Library <ArrowUpRight size={14}/></a></div></section>
+    <section className="sl-whatsapp-panel"><MessageCircle size={25} /><div><h2>Stay in the loop on WhatsApp.</h2><p>The Study Labs group is run by the admin — announcements, new notes, events and opportunities.</p></div>{info.communityUrl && <a href={info.communityUrl} target="_blank" rel="noreferrer">Join group <ArrowUpRight size={15} /></a>}</section>
+    <section className="sl-official"><h2>Official Chuka learning links</h2><div>{officialLinks.map((link) => <a key={str(link, 'id', 'title')} href={str(link, 'url')} target="_blank" rel="noreferrer">{str(link, 'title')} <ArrowUpRight size={14} /></a>)}</div></section>
     <footer className="sl-footer">Study Labs · Chuka Comrades · Learn together, grow together.</footer>
+    {buying && user && <BuyDialog user={user} product={buying} mpesaNumber={info.mpesaNumber} mpesaName={info.mpesaName} onClose={() => setBuying(null)} onDone={(m) => { setBuying(null); flash(m); void refreshOrders(); }} />}
+    {requesting && user && <PartnerRequestDialog user={user} profile={requesting} onClose={() => setRequesting(null)} onDone={(m) => { setRequesting(null); flash(m); }} />}
   </main>;
 }

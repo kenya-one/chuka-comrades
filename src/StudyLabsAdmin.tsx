@@ -1,43 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { User } from 'firebase/auth';
 import { Check, ExternalLink, LoaderCircle, X } from 'lucide-react';
-import { postStudyAction, type StudyItem } from './lib/studyLabs';
+import { bootstrapStudyLabs, postStudyAction, shortDate, str, type StudyItem } from './lib/studyLabs';
 import './StudyLabsAdmin.css';
 
-const val = (item: StudyItem, key: string) => (item[key] === undefined || item[key] === null ? '' : String(item[key]));
-const shortDate = (v: string) => { const d = new Date(v); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }); };
-
-/* ---------- Student: My uploads ---------- */
-export function MyUploads({ user, onSignIn }: { user: User | null; onSignIn: () => void }) {
-  const [items, setItems] = useState<StudyItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  useEffect(() => {
-    if (!user) { setLoading(false); return; }
-    setLoading(true);
-    postStudyAction(user, { action: 'myUploads' })
-      .then((r) => setItems((r.items as StudyItem[]) || []))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load your uploads.'))
-      .finally(() => setLoading(false));
-  }, [user]);
-  if (!user) return <div className="sla-empty"><p>Sign in to see the status of your uploads.</p><button className="sl-primary" onClick={onSignIn}>Sign in</button></div>;
-  if (loading) return <div className="sl-loading"><LoaderCircle className="sl-spin" /> Loading…</div>;
-  if (error) return <p className="sl-error">{error}</p>;
-  if (!items.length) return <div className="sla-empty"><p>You haven’t shared anything yet. Use “Share a resource” above.</p></div>;
-  const label: Record<string, string> = { pending: 'Awaiting review', active: 'Published', rejected: 'Not approved' };
-  return <div className="sla-list">{items.map((it) => <article className="sla-row" key={val(it, 'id')}>
-    <div className="sla-row-main"><strong>{val(it, 'title')}</strong><span>{val(it, 'type')} · {val(it, 'category')} · {shortDate(val(it, 'created_at'))}</span>
-      {val(it, 'status') === 'rejected' && val(it, 'rejection_reason') && <em>Reason: {val(it, 'rejection_reason')}</em>}</div>
-    <span className={`sla-badge sla-${val(it, 'status')}`}>{label[val(it, 'status')] || val(it, 'status')}</span>
-  </article>)}</div>;
-}
-
-/* ---------- Admin ---------- */
-type Section = 'Resources' | 'Products' | 'StudyPartners' | 'Reports' | 'WhatsAppGroups' | 'Post';
+type Section = 'Resources' | 'Products' | 'Orders' | 'StudyPartners' | 'Opportunities' | 'Events' | 'Reports' | 'Post' | 'Settings';
 const sections: { key: Section; label: string }[] = [
-  { key: 'Resources', label: 'Materials' }, { key: 'Products', label: 'Products' }, { key: 'StudyPartners', label: 'Partners' },
-  { key: 'Reports', label: 'Reports' }, { key: 'WhatsAppGroups', label: 'Groups' }, { key: 'Post', label: 'Post' },
+  { key: 'Resources', label: 'Materials' }, { key: 'Products', label: 'Project Hub' }, { key: 'Orders', label: 'Orders' }, { key: 'StudyPartners', label: 'Partners' },
+  { key: 'Opportunities', label: 'Opportunities' }, { key: 'Events', label: 'Events' }, { key: 'Reports', label: 'Reports' }, { key: 'Post', label: 'Post' }, { key: 'Settings', label: 'Settings' },
 ];
+const REVIEWABLE: Section[] = ['Resources', 'Products', 'StudyPartners', 'Opportunities', 'Events'];
 
 export function AdminPanel({ user }: { user: User }) {
   const [section, setSection] = useState<Section>('Resources');
@@ -47,78 +19,100 @@ export function AdminPanel({ user }: { user: User }) {
   const [busyId, setBusyId] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const reviewable = section === 'Resources' || section === 'Products' || section === 'StudyPartners';
+  const reviewable = REVIEWABLE.includes(section);
+  const isOrders = section === 'Orders';
+  const listable = reviewable || isOrders || section === 'Reports';
 
   const load = useCallback(async () => {
-    if (section === 'Post') return;
+    if (!listable) return;
     setLoading(true); setError('');
     try {
-      const filter = section === 'Reports' ? 'open' : section === 'WhatsAppGroups' ? '' : status;
-      const r = await postStudyAction(user, { action: 'adminList', table: section, ...(filter ? { status: filter } : {}) });
+      const filter = section === 'Reports' ? 'open' : status;
+      const r = await postStudyAction(user, { action: 'adminList', table: section, status: filter });
       setItems((r.items as StudyItem[]) || []);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not load.'); }
     finally { setLoading(false); }
-  }, [user, section, status]);
+  }, [user, section, status, listable]);
   useEffect(() => { void load(); }, [load]);
 
-  async function review(item: StudyItem, decision: 'approve' | 'reject') {
+  function pick(next: Section) { setSection(next); setNotice(''); setError(''); setStatus(next === 'Orders' ? 'pending' : 'pending'); }
+
+  async function act(id: string, run: () => Promise<unknown>, done: string) {
+    setBusyId(id); setError(''); setNotice('');
+    try { await run(); setNotice(done); await load(); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Action failed.'); }
+    finally { setBusyId(''); }
+  }
+  function review(item: StudyItem, decision: 'approve' | 'reject') {
     let reason = '';
     if (decision === 'reject') { reason = window.prompt('Reason for rejecting (the student will see this):') || ''; if (!reason.trim()) return; }
-    setBusyId(val(item, 'id')); setError(''); setNotice('');
-    try {
-      await postStudyAction(user, { action: 'adminReview', table: section, id: val(item, 'id'), decision, reason });
-      setNotice(decision === 'approve' ? 'Approved and published.' : 'Rejected.'); await load();
-    } catch (e) { setError(e instanceof Error ? e.message : 'Action failed.'); }
-    finally { setBusyId(''); }
+    void act(str(item, 'id'), () => postStudyAction(user, { action: 'adminReview', table: section, id: str(item, 'id'), decision, reason }), decision === 'approve' ? 'Approved and published.' : 'Rejected.');
   }
-  async function setField(table: string, item: StudyItem, value: string) {
-    setBusyId(val(item, 'id')); setError(''); setNotice('');
-    try { await postStudyAction(user, { action: 'adminUpdate', table, id: val(item, 'id'), field: 'status', value }); setNotice('Updated.'); await load(); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Update failed.'); }
-    finally { setBusyId(''); }
+  function verify(item: StudyItem, decision: 'approve' | 'reject') {
+    if (decision === 'reject' && !window.confirm('Reject this payment?')) return;
+    void act(str(item, 'id'), () => postStudyAction(user, { action: 'adminVerifyOrder', id: str(item, 'id'), decision }), decision === 'approve' ? 'Payment verified — the buyer now has access.' : 'Order rejected.');
   }
+  function resolveReport(item: StudyItem) {
+    void act(str(item, 'id'), () => postStudyAction(user, { action: 'adminUpdate', table: 'Reports', id: str(item, 'id'), field: 'status', value: 'resolved' }), 'Report resolved.');
+  }
+
+  const filters = isOrders ? [['pending', 'Pending'], ['verified', 'Verified'], ['rejected', 'Rejected']] : [['pending', 'Pending'], ['active', 'Published'], ['rejected', 'Rejected']];
 
   return <div className="sla-admin">
-    <div className="sla-sections">{sections.map((s) => <button key={s.key} className={section === s.key ? 'active' : ''} onClick={() => { setSection(s.key); setNotice(''); setError(''); }}>{s.label}</button>)}</div>
-    {reviewable && <div className="sla-filter">{['pending', 'active', 'rejected'].map((s) => <button key={s} className={status === s ? 'active' : ''} onClick={() => setStatus(s)}>{s === 'active' ? 'Published' : s[0].toUpperCase() + s.slice(1)}</button>)}</div>}
+    <div className="sla-sections">{sections.map((s) => <button key={s.key} className={section === s.key ? 'active' : ''} onClick={() => pick(s.key)}>{s.label}</button>)}</div>
+    {(reviewable || isOrders) && <div className="sla-filter">{filters.map(([key, label]) => <button key={key} className={status === key ? 'active' : ''} onClick={() => setStatus(key)}>{label}</button>)}</div>}
     {notice && <p className="sl-notice">{notice}</p>}{error && <p className="sl-error">{error}</p>}
-    {section === 'Post' ? <PostForms user={user} onDone={(m) => { setNotice(m); setError(''); }} onError={setError} /> : <>
-      {section === 'WhatsAppGroups' && <GroupForm user={user} onDone={() => { setNotice('Group added.'); void load(); }} onError={setError} />}
-      {loading ? <div className="sl-loading"><LoaderCircle className="sl-spin" /> Loading…</div> : !items.length ? <div className="sla-empty"><p>Nothing here.</p></div> :
-        <div className="sla-list">{items.map((it) => <article className="sla-row sla-admin-row" key={val(it, 'id')}>
+    {section === 'Post' ? <PostForms user={user} onDone={(m) => { setNotice(m); setError(''); }} onError={setError} />
+      : section === 'Settings' ? <SettingsForm user={user} onDone={(m) => { setNotice(m); setError(''); }} onError={setError} />
+      : loading ? <div className="sl-loading"><LoaderCircle className="sl-spin" /> Loading…</div>
+      : !items.length ? <div className="sla-empty"><p>Nothing here.</p></div>
+      : <div className="sla-list">{items.map((it) => {
+        const id = str(it, 'id'); const itemStatus = str(it, 'status'); const busy = busyId === id;
+        const price = str(it, 'price_kes', 'amount_kes');
+        const meta = [str(it, 'type', 'category'), str(it, 'course'), str(it, 'unit_code'), str(it, 'year_of_study') && `Year ${str(it, 'year_of_study')}`, price && (Number(price) === 0 ? 'Free' : `KSh ${price}`), str(it, 'payment_reference') && `M-Pesa ${str(it, 'payment_reference')}`].filter(Boolean).join(' · ');
+        const by = str(it, 'uploader_email', 'seller_email', 'reporter_email', 'suggested_by', 'email');
+        return <article className="sla-row sla-admin-row" key={id}>
           <div className="sla-row-main">
-            <strong>{val(it, 'title') || val(it, 'display_name') || val(it, 'reason') || 'Untitled'}</strong>
-            <span>{[val(it, 'category'), val(it, 'course'), val(it, 'unit_code'), val(it, 'year_of_study') && `Year ${val(it, 'year_of_study')}`, val(it, 'price_kes') && `KSh ${val(it, 'price_kes')}`].filter(Boolean).join(' · ')}</span>
-            {val(it, 'description') && <p>{val(it, 'description')}</p>}
-            {(val(it, 'uploader_email') || val(it, 'seller_email') || val(it, 'reporter_email')) && <small>By {val(it, 'uploader_email') || val(it, 'seller_email') || val(it, 'reporter_email')} · {shortDate(val(it, 'created_at'))}</small>}
-            {section === 'Reports' && <small>{val(it, 'item_type')} · {val(it, 'item_id')}</small>}
-            {section === 'WhatsAppGroups' && <small>{val(it, 'invite_url')} · {val(it, 'status')}</small>}
-            {val(it, 'rejection_reason') && <em>Rejected: {val(it, 'rejection_reason')}</em>}
-            {val(it, 'file_url') && <a className="sla-open" href={val(it, 'file_url')} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Open file to preview (use your admin Google account)</a>}
+            <strong>{str(it, 'title', 'display_name', 'product_title', 'reason') || 'Untitled'}</strong>
+            {meta && <span>{meta}</span>}
+            {str(it, 'description', 'intro') && <p>{str(it, 'description', 'intro')}</p>}
+            {isOrders && <small>Buyer: {str(it, 'buyer_email')} · Seller: {str(it, 'seller_email') || '—'}</small>}
+            {!isOrders && by && <small>By {by} · {shortDate(it.created_at)}</small>}
+            {section === 'Reports' && <small>{str(it, 'item_type')} · {str(it, 'item_id')}</small>}
+            {str(it, 'rejection_reason') && <em>Rejected: {str(it, 'rejection_reason')}</em>}
+            {str(it, 'cover_id') && <a className="sla-open" href={`https://drive.google.com/file/d/${str(it, 'cover_id')}/view`} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Open cover image</a>}
+            {str(it, 'file_url') && <a className="sla-open" href={str(it, 'file_url')} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Open file (use your admin Google account)</a>}
+            {str(it, 'application_url', 'registration_url') && <a className="sla-open" href={str(it, 'application_url', 'registration_url')} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Check the link</a>}
           </div>
           <div className="sla-actions">
-            {reviewable && val(it, 'status') !== 'active' && <button className="sla-approve" disabled={busyId === val(it, 'id')} onClick={() => void review(it, 'approve')}><Check size={15} /> Approve</button>}
-            {reviewable && val(it, 'status') !== 'rejected' && <button className="sla-reject" disabled={busyId === val(it, 'id')} onClick={() => void review(it, 'reject')}><X size={15} /> Reject</button>}
-            {section === 'Reports' && <button className="sla-approve" onClick={() => void setReportResolved(it)}>Mark resolved</button>}
-            {section === 'WhatsAppGroups' && <button className="sla-reject" disabled={busyId === val(it, 'id')} onClick={() => void setField('WhatsAppGroups', it, val(it, 'status') === 'active' ? 'disabled' : 'active')}>{val(it, 'status') === 'active' ? 'Disable' : 'Enable'}</button>}
+            {reviewable && itemStatus !== 'active' && <button className="sla-approve" disabled={busy} onClick={() => review(it, 'approve')}><Check size={15} /> Approve</button>}
+            {reviewable && itemStatus !== 'rejected' && <button className="sla-reject" disabled={busy} onClick={() => review(it, 'reject')}><X size={15} /> Reject</button>}
+            {isOrders && itemStatus !== 'verified' && <button className="sla-approve" disabled={busy} onClick={() => verify(it, 'approve')}><Check size={15} /> Verify payment</button>}
+            {isOrders && itemStatus !== 'rejected' && <button className="sla-reject" disabled={busy} onClick={() => verify(it, 'reject')}><X size={15} /> Reject</button>}
+            {section === 'Reports' && <button className="sla-approve" disabled={busy} onClick={() => resolveReport(it)}>Mark resolved</button>}
           </div>
-        </article>)}</div>}
-    </>}
+        </article>;
+      })}</div>}
   </div>;
-
-  async function setReportResolved(item: StudyItem) { await setField('Reports', item, 'resolved'); }
 }
 
-function GroupForm({ user, onDone, onError }: { user: User; onDone: () => void; onError: (m: string) => void }) {
+function SettingsForm({ user, onDone, onError }: { user: User; onDone: (m: string) => void; onError: (m: string) => void }) {
+  const [values, setValues] = useState({ whatsappCommunityUrl: '', mpesaNumber: '', mpesaName: '' });
   const [busy, setBusy] = useState(false);
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault(); const form = e.currentTarget; const f = new FormData(form); setBusy(true); onError('');
-    try { await postStudyAction(user, { action: 'adminCreateGroup', title: f.get('title'), inviteUrl: f.get('inviteUrl'), course: f.get('course'), yearOfStudy: f.get('yearOfStudy'), unitCode: f.get('unitCode'), description: f.get('description') }); form.reset(); onDone(); }
-    catch (err) { onError(err instanceof Error ? err.message : 'Could not add group.'); } finally { setBusy(false); }
+  useEffect(() => {
+    bootstrapStudyLabs().then((d) => setValues({ whatsappCommunityUrl: String(d.whatsappCommunityUrl || ''), mpesaNumber: String(d.mpesaNumber || ''), mpesaName: String(d.mpesaName || '') })).catch(() => undefined);
+  }, []);
+  async function submit(e: FormEvent) {
+    e.preventDefault(); setBusy(true); onError('');
+    try { await postStudyAction(user, { action: 'adminSaveSettings', ...values }); onDone('Settings saved.'); }
+    catch (err) { onError(err instanceof Error ? err.message : 'Could not save settings.'); }
+    finally { setBusy(false); }
   }
-  return <form className="sla-form" onSubmit={submit}><h3>Add a WhatsApp group</h3>
-    <div className="sla-grid"><label>Group name<input name="title" required /></label><label>Invite link<input name="inviteUrl" required placeholder="https://chat.whatsapp.com/…" /></label><label>Course<input name="course" /></label><label>Year<input name="yearOfStudy" /></label><label>Unit code<input name="unitCode" /></label></div>
-    <label>Description<input name="description" /></label><button className="sl-primary" disabled={busy}>{busy ? 'Adding…' : 'Add group'}</button></form>;
+  const set = (k: keyof typeof values) => (e: { target: { value: string } }) => setValues((v) => ({ ...v, [k]: e.target.value }));
+  return <form className="sla-form" onSubmit={submit}><h3>Study Labs settings</h3>
+    <label>WhatsApp community link (the single admin group)<input value={values.whatsappCommunityUrl} onChange={set('whatsappCommunityUrl')} placeholder="https://chat.whatsapp.com/…" /></label>
+    <div className="sla-grid"><label>M-Pesa number or till (shown to buyers)<input value={values.mpesaNumber} onChange={set('mpesaNumber')} placeholder="e.g. 0712345678" /></label><label>Name on the M-Pesa account<input value={values.mpesaName} onChange={set('mpesaName')} placeholder="e.g. Sidney Wafula" /></label></div>
+    <button className="sl-primary" disabled={busy}>{busy ? 'Saving…' : 'Save settings'}</button></form>;
 }
 
 function PostForms({ user, onDone, onError }: { user: User; onDone: (m: string) => void; onError: (m: string) => void }) {
