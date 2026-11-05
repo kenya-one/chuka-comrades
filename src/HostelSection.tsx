@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import type { User } from "firebase/auth";
-import { BadgeCheck, Building2, CalendarDays, Camera, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, MapPin, MessageCircle, Phone, RefreshCw, ShieldCheck, Users, X, ZoomIn } from "lucide-react";
+import { BadgeCheck, Building2, CalendarDays, Camera, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, MapPin, MessageCircle, Pencil, Phone, RefreshCw, ShieldCheck, Users, X, ZoomIn } from "lucide-react";
 import { hostelApi, type HostelAdminData, type HostelListing, type HostelSettings } from "./lib/hostelApi";
 import "./HostelSection.css";
 
@@ -14,13 +14,46 @@ function WhatsAppLogo({ size = 26 }: { size?: number }) {
   </span>;
 }
 
+/** Google Maps app icon (4-colour pin). If you have the official asset from Google's brand resources, you can swap these paths for it. */
+function GoogleMapsLogo({ size = 20 }: { size?: number }) {
+  return <svg className="cc-hostel__gmaps-logo" viewBox="0 0 92.3 132.3" height={size} width={size * 92.3 / 132.3} aria-hidden="true" focusable="false">
+    <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z"/>
+    <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z"/>
+    <path fill="#4285f4" d="M46.2 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.3-1.6 8.3-4.2 11.4 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-4.1 8.4-6.3 13.6-6.3"/>
+    <path fill="#fbbc04" d="M46.2 63.8c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3"/>
+    <path fill="#34a853" d="M59.1 109.2c15.4-24.1 33.3-35 33.3-63 0-7.7-1.9-14.9-5.2-21.3L25.6 98c2.6 3.4 5.3 7.3 7.9 11.3 9.3 14.5 6.7 23.1 12.7 23.1s3.4-8.7 12.9-23.2"/>
+  </svg>;
+}
+
+/** White WhatsApp glyph for use on the green share button. */
+function WhatsAppGlyph({ size = 17 }: { size?: number }) {
+  return <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" focusable="false"><path fill="currentColor" d={WA_PATH}/></svg>;
+}
+
+/** Website link included in every shared listing. Set VITE_SITE_URL to your live address (e.g. https://chukacomrades.com); falls back to the current page. */
+const siteUrl = () => {
+  const configured = (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_SITE_URL;
+  return (configured || `${window.location.origin}${window.location.pathname}`).replace(/\/$/, "");
+};
+
 const money = (value: number) => `KSh ${Number(value).toLocaleString("en-KE")}`;
 const digits = (value: string) => value.replace(/\D/g, "");
 const waLink = (phone: string, message: string) => `https://wa.me/${digits(phone)}?text=${encodeURIComponent(message)}`;
 const shareLink = (message: string) => `https://wa.me/?text=${encodeURIComponent(message)}`;
 
-const listingShareText = (item: HostelListing) =>
-  `Chuka Comrades Hostel Listing\n${item.name}\nLocation: ${item.area}${item.landmark ? `, near ${item.landmark}` : ""}\nRent: ${money(item.rent_amount)} / ${item.rent_period}\nRoom type: ${item.room_type}\nAvailable: ${item.available_rooms}\nContact: ${item.landlord_contact}\nBrowse on Chuka Comrades.`;
+const listingShareText = (item: HostelListing) => [
+  `*${item.name}* - Chuka Comrades Hostel`,
+  `Location: ${item.area}${item.landmark ? `, near ${item.landmark}` : ""}`,
+  `Rent: ${money(item.rent_amount)} / ${item.rent_period}`,
+  `Room type: ${item.room_type}`,
+  `Available rooms: ${item.available_rooms}`,
+  item.available_from ? `Available from: ${item.available_from}` : "",
+  item.facilities?.length ? `Facilities: ${item.facilities.join(", ")}` : "",
+  `Contact: ${item.contact_name ? `${item.contact_name} - ` : ""}${item.landlord_contact}`,
+  item.location_url ? `Map: ${item.location_url}` : "",
+  "",
+  `See more hostels: ${siteUrl()}`,
+].filter((line, i, arr) => line !== "" || (i > 0 && arr[i - 1] !== "")).join("\n");
 
 /** Shares the listing text AND its photos. Uses the phone's share sheet when it can attach files, otherwise WhatsApp with photo links. */
 async function shareListing(item: HostelListing) {
@@ -68,6 +101,7 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const loadListings = useCallback(async () => {
     const result = await hostelApi.publicListings();
@@ -120,6 +154,17 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
     try {
       await hostelApi.createListing(user, payload);
       setNotice("Hostel added and published successfully.");
+      await refresh();
+    } finally { setBusy(""); }
+  }
+
+  async function saveListing(id: string, payload: Record<string, unknown>) {
+    if (!user) throw new Error("Sign in with the authorized hostel admin account.");
+    setBusy("edit"); setError(""); setNotice("");
+    try {
+      await hostelApi.updateListing(user, id, payload);
+      setNotice("Hostel details updated successfully.");
+      setEditingId(null);
       await refresh();
     } finally { setBusy(""); }
   }
@@ -190,10 +235,12 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
     </div>}
 
     {tab === "admin" && isAdmin && adminData && <div className="cc-hostel__admin">
-      <AdminCreateHostelForm user={user} busy={busy === "create"} maxImages={settings.maxImagesPerHostel} onCreate={createListing}/>
+      <HostelForm mode="create" user={user} busy={busy === "create"} maxImages={settings.maxImagesPerHostel} onSubmit={createListing}/>
       <div className="cc-hostel__admin-heading"><div><span className="cc-hostel__eyebrow">ADMIN ONLY</span><h2>Hostel management desk</h2><p>Add WhatsApp-submitted hostels, publish listings and control availability.</p></div><BadgeCheck size={30}/></div>
       <h3>Published / unavailable listings ({adminData.listings.length})</h3>
-      {adminData.listings.map((item) => <div className="cc-hostel__manage-row" key={item.id}><span><strong>{item.name}</strong><small>{item.area} · {money(item.rent_amount)}</small></span><span className="cc-hostel__status">{item.status}</span><button onClick={() => void updateStatus(item, item.status === "published" ? "unavailable" : "published")} disabled={busy === item.id}>{item.status === "published" ? "Mark unavailable" : "Republish"}</button><button onClick={() => void shareListing(item)}>Share to WhatsApp</button></div>)}
+      {adminData.listings.map((item) => editingId === item.id
+        ? <HostelForm key={item.id} mode="edit" user={user} busy={busy === "edit"} maxImages={settings.maxImagesPerHostel} initial={item} onSubmit={(payload) => saveListing(item.id, payload)} onCancel={() => setEditingId(null)}/>
+        : <div className="cc-hostel__manage-row" key={item.id}><span><strong>{item.name}</strong><small>{item.area} · {money(item.rent_amount)} · {item.available_rooms} room(s) available</small></span><span className="cc-hostel__status">{item.status}</span><button onClick={() => { setEditingId(item.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Pencil size={13}/> Edit</button><button onClick={() => void updateStatus(item, item.status === "published" ? "unavailable" : "published")} disabled={busy === item.id}>{item.status === "published" ? "Mark unavailable" : "Republish"}</button><button onClick={() => void shareListing(item)}>Share to WhatsApp</button></div>)}
     </div>}
   </section>;
 }
@@ -212,17 +259,36 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function AdminCreateHostelForm({ user, busy, maxImages, onCreate }: {
-  user: User | null; busy: boolean; maxImages: number; onCreate: (payload: Record<string, unknown>) => Promise<void>;
+type FormState = { name: string; area: string; landmark: string; location_url: string; rent_amount: string; rent_period: string; room_type: string; total_rooms: string; available_rooms: string; available_from: string; facilities: string; description: string; contact_name: string; landlord_contact: string };
+
+const emptyForm: FormState = { name: "", area: "", landmark: "", location_url: "", rent_amount: "", rent_period: "month", room_type: "Single room", total_rooms: "", available_rooms: "1", available_from: "", facilities: "Water, electricity", description: "", contact_name: "", landlord_contact: "" };
+
+const formFromListing = (item: HostelListing): FormState => ({
+  name: item.name || "", area: item.area || "", landmark: item.landmark || "", location_url: item.location_url || "",
+  rent_amount: String(item.rent_amount ?? ""), rent_period: item.rent_period || "month", room_type: item.room_type || "",
+  total_rooms: item.total_rooms != null ? String(item.total_rooms) : "", available_rooms: String(item.available_rooms ?? 0),
+  available_from: (item.available_from || "").slice(0, 10), facilities: (item.facilities || []).join(", "),
+  description: item.description || "", contact_name: item.contact_name || "", landlord_contact: item.landlord_contact || "",
+});
+
+/** One form for both adding a hostel and editing an existing one. */
+function HostelForm({ mode, user, busy, maxImages, initial, onSubmit, onCancel }: {
+  mode: "create" | "edit"; user: User | null; busy: boolean; maxImages: number; initial?: HostelListing;
+  onSubmit: (payload: Record<string, unknown>) => Promise<void>; onCancel?: () => void;
 }) {
-  const [form, setForm] = useState({ name: "", area: "", landmark: "", location_url: "", rent_amount: "", rent_period: "month", room_type: "Single room", total_rooms: "", available_rooms: "1", available_from: "", facilities: "Water, electricity", description: "", contact_name: "", landlord_contact: "" });
+  const editing = mode === "edit";
+  const [form, setForm] = useState<FormState>(initial ? formFromListing(initial) : emptyForm);
   const [photos, setPhotos] = useState<File[]>([]);
   const [error, setError] = useState("");
+  const existing = (initial?.image_urls || []).slice(0, 3);
+  const set = (key: keyof FormState) => (e: { target: { value: string } }) => setForm({ ...form, [key]: e.target.value });
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
     if (!user) { setError("Sign in with the authorized admin account."); return; }
-    if (photos.length < 1 || photos.length > maxImages) {
-      setError(`Select between 1 and ${maxImages} hostel photos received from the landlord.`);
+    const needPhotos = !editing || photos.length > 0;
+    if (needPhotos && (photos.length < 1 || photos.length > maxImages)) {
+      setError(`Select between 1 and ${maxImages} hostel photos.`);
       return;
     }
     if (photos.some((photo) => photo.size > 5 * 1024 * 1024)) {
@@ -230,45 +296,60 @@ function AdminCreateHostelForm({ user, busy, maxImages, onCreate }: {
       return;
     }
     try {
-      const images = await Promise.all(photos.map(async (photo) => ({
-        base64: await fileToBase64(photo),
-        mimeType: photo.type,
-        name: photo.name,
-      })));
-      await onCreate({
+      const payload: Record<string, unknown> = {
         ...form,
         rent_amount: Number(form.rent_amount),
         total_rooms: form.total_rooms ? Number(form.total_rooms) : null,
         available_rooms: Number(form.available_rooms),
         facilities: form.facilities.split(",").map((v) => v.trim()).filter(Boolean),
-        images,
-      });
-      setForm({ name: "", area: "", landmark: "", location_url: "", rent_amount: "", rent_period: "month", room_type: "Single room", total_rooms: "", available_rooms: "1", available_from: "", facilities: "Water, electricity", description: "", contact_name: "", landlord_contact: "" });
-      setPhotos([]);
-    } catch (err) { setError(err instanceof Error ? err.message : "Could not publish this hostel."); }
+      };
+      if (photos.length) {
+        payload.images = await Promise.all(photos.map(async (photo) => ({
+          base64: await fileToBase64(photo),
+          mimeType: photo.type,
+          name: photo.name,
+        })));
+        if (editing) payload.replace_images = true;
+      }
+      await onSubmit(payload);
+      if (!editing) { setForm(emptyForm); setPhotos([]); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not save this hostel."); }
   }
-  return <form className="cc-hostel__form cc-hostel__admin-create" onSubmit={submit}>
-    <div className="cc-hostel__form-heading"><div><span className="cc-hostel__eyebrow">ADMIN ONLY · WHATSAPP INTAKE</span><h3>Add hostel received from landlord on WhatsApp</h3><p>Copy the landlord's details from WhatsApp, verify permission and publish the listing here.</p></div><Building2 size={28}/></div>
+
+  return <form className={`cc-hostel__form ${editing ? "cc-hostel__admin-edit" : "cc-hostel__admin-create"}`} onSubmit={submit}>
+    <div className="cc-hostel__form-heading"><div>
+      <span className="cc-hostel__eyebrow">{editing ? "ADMIN ONLY · EDIT LISTING" : "ADMIN ONLY · WHATSAPP INTAKE"}</span>
+      <h3>{editing ? `Edit ${initial?.name || "hostel"}` : "Add hostel received from landlord on WhatsApp"}</h3>
+      <p>{editing ? "Update any detail below. Changes appear on the public directory as soon as you save." : "Copy the landlord's details from WhatsApp, verify permission and publish the listing here."}</p>
+    </div>{editing ? <Pencil size={26}/> : <Building2 size={28}/>}</div>
     <div className="cc-hostel__form-grid">
-      <label>Hostel name<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>
-      <label>Landlord / caretaker name<input required value={form.contact_name} onChange={e=>setForm({...form,contact_name:e.target.value})}/></label>
-      <label>Area / location<input required value={form.area} onChange={e=>setForm({...form,area:e.target.value})}/></label>
-      <label>Nearby landmark<input value={form.landmark} onChange={e=>setForm({...form,landmark:e.target.value})}/></label>
-      <label>Google Maps link<input type="url" value={form.location_url} onChange={e=>setForm({...form,location_url:e.target.value})} placeholder="https://…"/></label>
-      <label>Rent (KSh)<input type="number" min="0" required value={form.rent_amount} onChange={e=>setForm({...form,rent_amount:e.target.value})}/></label>
-      <label>Rent period<select value={form.rent_period} onChange={e=>setForm({...form,rent_period:e.target.value})}><option value="month">Per month</option><option value="semester">Per semester</option></select></label>
-      <label>Room type<input required value={form.room_type} onChange={e=>setForm({...form,room_type:e.target.value})}/></label>
-      <label>Total rooms<input type="number" min="0" value={form.total_rooms} onChange={e=>setForm({...form,total_rooms:e.target.value})}/></label>
-      <label>Available rooms<input type="number" min="0" required value={form.available_rooms} onChange={e=>setForm({...form,available_rooms:e.target.value})}/></label>
-      <label>Available from<input type="date" value={form.available_from} onChange={e=>setForm({...form,available_from:e.target.value})}/></label>
-      <label>Landlord WhatsApp / call number<input required type="tel" value={form.landlord_contact} onChange={e=>setForm({...form,landlord_contact:e.target.value})}/></label>
-      <label className="cc-hostel__wide">Facilities<input value={form.facilities} onChange={e=>setForm({...form,facilities:e.target.value})}/></label>
-      <label className="cc-hostel__wide">Description<textarea rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label>
-      <label className="cc-hostel__wide cc-hostel__photo-field"><span><Camera size={17}/> Hostel photos received from landlord (up to 3)</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e=>setPhotos(Array.from(e.target.files||[]).filter(f=>f.type.startsWith("image/")).slice(0,maxImages))}/><small>{photos.length}/{maxImages} selected · Maximum 5 MB each.</small></label>
+      <label>Hostel name<input required value={form.name} onChange={set("name")}/></label>
+      <label>Landlord / caretaker name<input required value={form.contact_name} onChange={set("contact_name")}/></label>
+      <label>Area / location<input required value={form.area} onChange={set("area")}/></label>
+      <label>Nearby landmark<input value={form.landmark} onChange={set("landmark")}/></label>
+      <label>Google Maps link<input type="url" value={form.location_url} onChange={set("location_url")} placeholder="https://…"/></label>
+      <label>Rent (KSh)<input type="number" min="0" required value={form.rent_amount} onChange={set("rent_amount")}/></label>
+      <label>Rent period<select value={form.rent_period} onChange={set("rent_period")}><option value="month">Per month</option><option value="semester">Per semester</option></select></label>
+      <label>Room type<input required value={form.room_type} onChange={set("room_type")}/></label>
+      <label>Total rooms<input type="number" min="0" value={form.total_rooms} onChange={set("total_rooms")}/></label>
+      <label>Available rooms<input type="number" min="0" required value={form.available_rooms} onChange={set("available_rooms")}/></label>
+      <label>Available from<input type="date" value={form.available_from} onChange={set("available_from")}/></label>
+      <label>Landlord WhatsApp / call number<input required type="tel" value={form.landlord_contact} onChange={set("landlord_contact")}/></label>
+      <label className="cc-hostel__wide">Facilities (comma separated)<input value={form.facilities} onChange={set("facilities")}/></label>
+      <label className="cc-hostel__wide">Description<textarea rows={3} value={form.description} onChange={set("description")}/></label>
+      <label className="cc-hostel__wide cc-hostel__photo-field">
+        <span><Camera size={17}/> {editing ? "Replace photos (optional, up to " : "Hostel photos received from landlord (up to "}{maxImages})</span>
+        {editing && existing.length > 0 && <div className="cc-hostel__photo-preview">{existing.map((url) => <img key={url} src={url} alt="Current hostel"/>)}</div>}
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setPhotos(Array.from(e.target.files || []).filter((f) => f.type.startsWith("image/")).slice(0, maxImages))}/>
+        <small>{editing ? (photos.length ? `${photos.length} new photo(s) will replace the current ones.` : "Leave empty to keep the current photos.") : `${photos.length}/${maxImages} selected`} · Maximum 5 MB each.</small>
+      </label>
     </div>
-    <label className="cc-hostel__consent"><input type="checkbox" required/><span>I have confirmed that the landlord authorized publication of these photos and contact number.</span></label>
+    {!editing && <label className="cc-hostel__consent"><input type="checkbox" required/><span>I have confirmed that the landlord authorized publication of these photos and contact number.</span></label>}
     {error && <p className="cc-hostel__error" role="alert">{error}</p>}
-    <button className="cc-hostel__primary" disabled={busy}>{busy ? "Uploading and publishing…" : "Add and publish hostel"}</button>
+    <div className="cc-hostel__form-actions">
+      <button className="cc-hostel__primary" disabled={busy}>{busy ? (editing ? "Saving…" : "Uploading and publishing…") : (editing ? "Save changes" : "Add and publish hostel")}</button>
+      {editing && onCancel && <button type="button" className="cc-hostel__cancel" onClick={onCancel} disabled={busy}>Cancel</button>}
+    </div>
   </form>;
 }
 
@@ -321,6 +402,8 @@ function ImageLightbox({ name, urls, start, onClose }: { name: string; urls: str
 }
 
 function HostelCard({ listing, adminWhatsApp }: { listing: HostelListing; adminWhatsApp: string }) {
+  const [sharing, setSharing] = useState(false);
+  async function share() { setSharing(true); try { await shareListing(listing); } finally { setSharing(false); } }
   const message = `Hello ${listing.contact_name || "Landlord"}, I saw ${listing.name} on Chuka Comrades. Is accommodation still available?`;
   const adminMessage = `Hello Chuka Comrades admin, I am interested in ${listing.name} in ${listing.area}. Please help me connect with the landlord.`;
   return <article className="cc-hostel__card">
@@ -332,9 +415,10 @@ function HostelCard({ listing, adminWhatsApp }: { listing: HostelListing; adminW
       {listing.available_from && <p className="cc-hostel__muted"><CalendarDays size={14}/> Available from {listing.available_from}</p>}
       {listing.description && <p className="cc-hostel__description">{listing.description}</p>}
       {listing.facilities.length > 0 && <p className="cc-hostel__facilities">{listing.facilities.join(" · ")}</p>}
-      {listing.location_url && <a className="cc-hostel__map" href={listing.location_url} target="_blank" rel="noreferrer"><MapPin size={14}/> Open map <ExternalLink size={12}/></a>}
+      {listing.location_url && <a className="cc-hostel__map" href={listing.location_url} target="_blank" rel="noreferrer" aria-label={`Open ${listing.name} in Google Maps`}><GoogleMapsLogo size={22}/><span>Open in Google Maps</span><ExternalLink size={12}/></a>}
       <div className="cc-hostel__contact"><strong>{listing.contact_name || "Landlord contact"}</strong><span>{listing.landlord_contact}</span></div>
       <div className="cc-hostel__card-actions"><a href={waLink(listing.landlord_contact,message)} target="_blank" rel="noreferrer"><MessageCircle size={16}/> WhatsApp landlord</a><a className="is-outline" href={`tel:${digits(listing.landlord_contact)}`}><Phone size={16}/> Call landlord</a></div>
+      <button type="button" className="cc-hostel__share" onClick={() => void share()} disabled={sharing}><WhatsAppGlyph size={17}/> {sharing ? "Preparing photos…" : "Share this hostel on WhatsApp"}</button>
       {adminWhatsApp && <a className="cc-hostel__admin-link" href={waLink(adminWhatsApp,adminMessage)} target="_blank" rel="noreferrer">Need help? Chat with Chuka Comrades admin</a>}
     </div>
   </article>;
