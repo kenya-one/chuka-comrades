@@ -62,3 +62,32 @@ The project-specific router, Supabase client, Firebase token bridge and admin al
 not available in this bundle. Therefore this is a non-invasive feature module with typed
 integration points, not a claim that it is already wired into your live app. Existing
 files remain untouched.
+
+
+## Hostel admin editing and deletion update
+
+The hostel admin desk now includes **Edit**, **Delete**, status controls and WhatsApp sharing for each existing listing.
+
+### What administrators can edit
+- Hostel name, description, area, landmark and Google Maps link
+- Rent amount and rent period
+- Room type, total rooms and available rooms
+- Availability date, facilities and landlord/caretaker contact
+- Verification and publication status
+- Optional photo replacement (leave the photo picker empty to retain existing photos)
+
+The editor prevents available rooms from exceeding total rooms when a total is provided. Deletion asks for confirmation, records the action in `ActivityLog`, removes the spreadsheet row and attempts to move that hostel's Drive photos to Trash.
+
+### Deploy the backend update
+
+The frontend uses the Google Apps Script URL configured in `src/lib/hostelApi.ts` (`VITE_HOSTEL_API_URL`, if supplied, overrides the default URL).
+
+1. Open the Apps Script project currently serving the hostel database.
+2. Replace/update its code with `apps-script/Code.gs`.
+3. Confirm the administrator email in `isHostelAdmin()` is the correct account. The supplied backend currently authorizes `sidneywafula30@gmail.com`; do not change this unless that is the intended administrator.
+4. Save the project.
+5. Deploy > Manage deployments > Edit the existing Web App deployment, select **New version**, and deploy.
+6. Keep the web app's existing access setting compatible with your Firebase-authenticated requests.
+7. Test an edit, room-count update and deletion using a test listing before deleting any real hostel.
+
+**Important:** The frontend update alone is not enough. The Apps Script backend must be redeployed with the new `delete_listing` action and photo-update support, otherwise Edit/Save or Delete will fail.

@@ -1,188 +1,57 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { User } from "firebase/auth";
-import { Trophy, Heart, Star, ShieldCheck, RefreshCw, Plus, Trash2, ChevronLeft, Users, Bell } from "lucide-react";
-import { cplApi, type Bootstrap, type CplMe, type League, type Preferences, type Team } from "./lib/cplApi";
+import {useCallback,useEffect,useState} from "react";
+import type {User} from "firebase/auth";
+import type {ReactNode} from "react";
+import {Trophy,Users,CalendarDays,ClipboardList,Wallet,Vote,RefreshCw,Plus,CheckCircle2,AlertCircle,Newspaper} from "lucide-react";
+import {cplApi,type Bootstrap,type CplMe,type CplRole} from "./lib/cplApi";
 import "./Cpl.css";
 
-type Tab = "teams" | "fan" | "chairman";
-const err = (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback);
-const EMPTY_PREFS: Preferences = { matchReminders: true, matchResults: true, transfers: true, news: true };
-const PREF_LABELS: [keyof Preferences, string][] = [
-  ["matchReminders", "Match reminders"], ["matchResults", "Match results"],
-  ["transfers", "Player transfers"], ["news", "Team and league news"],
-];
-
-function teamFromHash(): string | null {
-  const m = window.location.hash.match(/^#\/cpl\/team\/([\w-]+)/);
-  return m ? m[1] : null;
-}
-
-export default function Cpl({ user, onSignIn }: { user: User | null; onSignIn: () => void }) {
-  const [data, setData] = useState<Bootstrap | null>(null);
-  const [me, setMe] = useState<CplMe | null>(null);
-  const [tab, setTab] = useState<Tab>("teams");
-  const [league, setLeague] = useState<League>("A");
-  const [teamId, setTeamId] = useState<string | null>(teamFromHash());
-  const [notice, setNotice] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      setData(await cplApi.bootstrap());
-      if (user) setMe(await cplApi.me(user)); else setMe(null);
-    } catch (e) { setNotice(err(e, "Could not load the league.")); } finally { setLoading(false); }
-  }, [user]);
-  useEffect(() => { void load(); }, [load]);
-
-  const openTeam = (id: string | null) => {
-    setTeamId(id);
-    window.history.replaceState(null, "", id ? `#/cpl/team/${id}` : "#/cpl");
-  };
-
-  const follows = me?.follows ?? [];
-  const followOf = (id: string) => follows.find(f => f.teamId === id);
-  const teams = useMemo(() => data?.teams ?? [], [data]);
-  const byId = useMemo(() => new Map(teams.map(t => [t.id, t])), [teams]);
-  const current = teamId ? byId.get(teamId) ?? null : null;
-
-  // Run a signed-in action, show errors as a notice
-  const act = async (key: string, fn: (u: User) => Promise<unknown>, okMsg = "") => {
-    if (!user) { onSignIn(); return; }
-    setBusy(key);
-    try { await fn(user); await load(); if (okMsg) setNotice(okMsg); } catch (e) { setNotice(err(e, "Something went wrong.")); } finally { setBusy(""); }
-  };
-
-  const toggleFollow = (t: Team) =>
-    act(`follow-${t.id}`, u => (followOf(t.id) ? cplApi.unfollow(u, t.id) : cplApi.follow(u, t.id)));
-
-  const TeamCard = ({ t }: { t: Team }) => {
-    const f = followOf(t.id);
-    return (
-      <div className="cpl-team">
-        <button className="cpl-team-main" onClick={() => openTeam(t.id)}>
-          <span className="cpl-badge">{t.name.slice(0, 2).toUpperCase()}</span>
-          <span><strong>{t.name}</strong><small>League {t.league}{data?.followerCounts[t.id] ? ` · ${data.followerCounts[t.id]} fans` : ""}</small></span>
-        </button>
-        <button className={`cpl-follow${f ? " on" : ""}`} disabled={busy === `follow-${t.id}`} onClick={() => void toggleFollow(t)} aria-pressed={!!f}>
-          {f?.primary ? <Star size={14} /> : <Heart size={14} />}{f ? (f.primary ? "Favourite" : "Following") : "Follow"}
-        </button>
-      </div>
-    );
-  };
-
-  return (
-    <section className="cpl-wrap">
-      <div className="cpl-hero">
-        <div className="cpl-mark"><Trophy size={26} /></div>
-        <div><span className="cpl-kicker">CHUKA COMRADES FOOTBALL</span><h1>Chuka Premier League</h1><p>{data ? data.season.name : "Fixtures, results and campus football"}</p></div>
-        <button className="cpl-refresh" onClick={() => void load()} aria-label="Refresh"><RefreshCw size={16} className={loading ? "cpl-spin" : ""} /></button>
-      </div>
-
-      {notice && <div className="cpl-notice" role="status" onClick={() => setNotice("")}>{notice}</div>}
-
-      {current ? (
-        <div className="cpl-panel">
-          <button className="cpl-back" onClick={() => openTeam(null)}><ChevronLeft size={16} />All teams</button>
-          <div className="cpl-teamhead">
-            <span className="cpl-badge big">{current.name.slice(0, 2).toUpperCase()}</span>
-            <div><h2>{current.name}</h2><small>League {current.league} · {data?.followerCounts[current.id] ?? 0} fans</small></div>
-          </div>
-          {current.description && <p>{current.description}</p>}
-          <div className="cpl-actions">
-            <button className="cpl-btn" onClick={() => void toggleFollow(current)}>{followOf(current.id) ? "Unfollow" : "Follow team"}</button>
-            {followOf(current.id) && !followOf(current.id)!.primary && <button className="cpl-btn ghost" onClick={() => void act("primary", u => cplApi.setPrimary(u, current.id))}>Make favourite</button>}
-          </div>
-          <p className="cpl-soon">Squad, fixtures, results and transfers will appear here as those parts of the league go live.</p>
-        </div>
-      ) : (
-        <>
-          <div className="cpl-tabs" role="tablist">
-            <button role="tab" aria-selected={tab === "teams"} className={tab === "teams" ? "on" : ""} onClick={() => setTab("teams")}><Users size={15} />Teams</button>
-            <button role="tab" aria-selected={tab === "fan"} className={tab === "fan" ? "on" : ""} onClick={() => setTab("fan")}><Heart size={15} />My fan page</button>
-            {me?.isChairman && <button role="tab" aria-selected={tab === "chairman"} className={tab === "chairman" ? "on" : ""} onClick={() => setTab("chairman")}><ShieldCheck size={15} />Chairman</button>}
-          </div>
-
-          {tab === "teams" && (
-            <div className="cpl-panel">
-              <div className="cpl-league">
-                {(["A", "B"] as League[]).map(l => <button key={l} className={league === l ? "on" : ""} onClick={() => setLeague(l)}>League {l}</button>)}
-              </div>
-              {!user && <button className="cpl-btn cta" onClick={onSignIn}>Sign in to become a fan</button>}
-              {data && teams.filter(t => t.league === league).length === 0 && <p className="cpl-empty">No teams in League {league} yet.</p>}
-              {teams.filter(t => t.league === league).map(t => <TeamCard key={t.id} t={t} />)}
-            </div>
-          )}
-
-          {tab === "fan" && <FanPage user={user} onSignIn={onSignIn} me={me} byId={byId} openTeam={openTeam} act={act} />}
-          {tab === "chairman" && me?.isChairman && data && <ChairmanPage data={data} act={act} />}
-        </>
-      )}
-    </section>
-  );
-}
-
-function FanPage({ user, onSignIn, me, byId, openTeam, act }: {
-  user: User | null; onSignIn: () => void; me: CplMe | null; byId: Map<string, Team>;
-  openTeam: (id: string) => void; act: (k: string, fn: (u: User) => Promise<unknown>, ok?: string) => Promise<void>;
-}) {
-  const [prefs, setPrefs] = useState<Preferences>(EMPTY_PREFS);
-  useEffect(() => { if (me) setPrefs(me.preferences); }, [me]);
-  if (!user) return <div className="cpl-panel"><p>Sign in with your Chuka Comrades account to follow teams. No extra registration needed.</p><button className="cpl-btn cta" onClick={onSignIn}>Sign in</button></div>;
-  const followed = (me?.follows ?? []).filter(f => byId.has(f.teamId)).sort((a, b) => Number(b.primary) - Number(a.primary));
-  return (
-    <div className="cpl-panel">
-      <h3>Teams you follow</h3>
-      {followed.length === 0 && <p className="cpl-empty">You are not following any team yet. Open the Teams tab and tap Follow.</p>}
-      {followed.map(f => {
-        const t = byId.get(f.teamId)!;
-        return (
-          <div className="cpl-team" key={f.teamId}>
-            <button className="cpl-team-main" onClick={() => openTeam(t.id)}><span className="cpl-badge">{t.name.slice(0, 2).toUpperCase()}</span><span><strong>{t.name}</strong><small>League {t.league}{f.primary ? " · Favourite" : ""}</small></span></button>
-            {!f.primary && <button className="cpl-follow" onClick={() => void act("p", u => cplApi.setPrimary(u, t.id))}><Star size={14} />Make favourite</button>}
-          </div>
-        );
-      })}
-      <h3><Bell size={16} /> Notifications</h3>
-      {PREF_LABELS.map(([k, label]) => (
-        <label className="cpl-pref" key={k}><input type="checkbox" checked={prefs[k]} onChange={e => setPrefs({ ...prefs, [k]: e.target.checked })} />{label}</label>
-      ))}
-      <button className="cpl-btn" onClick={() => void act("prefs", u => cplApi.savePreferences(u, prefs), "Preferences saved.")}>Save preferences</button>
-      <p className="cpl-soon">Your choices are saved now. Alerts will start once match reminders and results go live.</p>
-    </div>
-  );
-}
-
-function ChairmanPage({ data, act }: { data: Bootstrap; act: (k: string, fn: (u: User) => Promise<unknown>, ok?: string) => Promise<void> }) {
-  const [name, setName] = useState("");
-  const [league, setLeague] = useState<League>("A");
-  const [desc, setDesc] = useState("");
-  const [season, setSeason] = useState("");
-  return (
-    <div className="cpl-panel">
-      <h3>Add a team</h3>
-      <div className="cpl-form">
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Team name" maxLength={60} />
-        <select value={league} onChange={e => setLeague(e.target.value as League)}><option value="A">League A</option><option value="B">League B</option></select>
-        <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Short description (optional)" maxLength={300} />
-        <button className="cpl-btn" disabled={!name.trim()} onClick={() => void act("add", async u => { await cplApi.saveTeam(u, { name, league, description: desc }); setName(""); setDesc(""); }, "Team added.")}><Plus size={14} />Add team</button>
-      </div>
-      <h3>Teams</h3>
-      {data.teams.length === 0 && <p className="cpl-empty">No teams yet.</p>}
-      {data.teams.map(t => (
-        <div className="cpl-team" key={t.id}>
-          <div className="cpl-team-main static"><span className="cpl-badge">{t.name.slice(0, 2).toUpperCase()}</span><span><strong>{t.name}</strong><small>League {t.league}</small></span></div>
-          <button className="cpl-follow danger" onClick={() => { if (window.confirm(`Remove ${t.name}? Its history is kept.`)) void act("rm", u => cplApi.removeTeam(u, t.id), "Team removed."); }}><Trash2 size={14} />Remove</button>
-        </div>
-      ))}
-      <h3>Season</h3>
-      <p>Current: <strong>{data.season.name}</strong>. Starting a new season archives this one. Followed teams carry over.</p>
-      <div className="cpl-form">
-        <input value={season} onChange={e => setSeason(e.target.value)} placeholder="New season name, e.g. Season 2027" maxLength={60} />
-        <button className="cpl-btn ghost" disabled={!season.trim()} onClick={() => { if (window.confirm(`Start "${season}" and archive ${data.season.name}?`)) void act("season", async u => { await cplApi.startSeason(u, season); setSeason(""); }, "New season started."); }}>Start season</button>
-      </div>
-      <p className="cpl-soon">Chairman access is checked on the server. Every change here is written to the audit log.</p>
-    </div>
-  );
+const roleLabels:Record<CplRole,string>={fan:"Fan",player:"Player",coach:"Team Coach",referee:"Referee",chairman:"Chairman"};
+const msg=(e:unknown)=>e instanceof Error?e.message:"Something went wrong.";
+export default function Cpl({user,onSignIn}:{user:User|null;onSignIn:()=>void}){
+ const [data,setData]=useState<Bootstrap|null>(null),[me,setMe]=useState<CplMe|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[tab,setTab]=useState("overview"),[role,setRole]=useState<CplRole>("player");
+ const [teamName,setTeamName]=useState(""),[coachEmail,setCoachEmail]=useState(""),[division,setDivision]=useState<"A"|"B">("A"),[seasonName,setSeasonName]=useState(""),[home,setHome]=useState(""),[away,setAway]=useState(""),[kickoff,setKickoff]=useState(""),[venue,setVenue]=useState(""),[fixtureId,setFixtureId]=useState(""),[homeScore,setHomeScore]=useState("0"),[awayScore,setAwayScore]=useState("0"),[fullName,setFullName]=useState(user?.displayName||""),[applyTeam,setApplyTeam]=useState(""),[position,setPosition]=useState(""),[jersey,setJersey]=useState(""),[voteCategory,setVoteCategory]=useState("player_of_week"),[nominee,setNominee]=useState(""),[financeTeam,setFinanceTeam]=useState(""),[amount,setAmount]=useState("200"),[financeDesc,setFinanceDesc]=useState("");
+ const load=useCallback(async()=>{setLoading(true);try{const d=await cplApi.bootstrap();setData(d);if(user){const m=await cplApi.me(user);setMe(m);setRole(m.activeRole==="coach"||m.activeRole==="referee"||m.activeRole==="player"?m.activeRole:"player");}else setMe(null);}catch(e){setNotice(msg(e));}finally{setLoading(false);}},[user]);
+ useEffect(()=>{void load();},[load]);
+ const run=async(action:string,body:Record<string,unknown>={},success="Saved.")=>{if(!user){onSignIn();return;}setBusy(true);setNotice("");try{await cplApi.action(user,action,body);setNotice(success);await load();}catch(e){setNotice(msg(e));}finally{setBusy(false);}};
+ const teams=data?.teams||[],fixtures=data?.fixtures||[],reports=data?.reports||[],pendingRoles=me?.isChairman?me.roleRequests.filter(x=>x.status==="pending"):[];
+ const activeRole: CplRole=me?.isChairman?"chairman":me?.activeRole||"fan";
+ const nav=[["overview","Overview",Trophy],["teams","Teams",Users],["fixtures","Fixtures",CalendarDays],["applications","Applications",ClipboardList],["voting","Weekly voting",Vote],["finance","Team finance",Wallet],["news","News",Newspaper]] as const;
+ const teamOptions=teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>);
+ const Panel=({title,children}:{title:string;children:ReactNode})=><section className="cpl-panel"><h2>{title}</h2>{children}</section>;
+ const field=(label:string,control:ReactNode)=><label className="cpl-field"><span>{label}</span>{control}</label>;
+ return <main className="cpl-wrap">
+  <header className="cpl-hero"><div className="cpl-mark"><Trophy size={26}/></div><div><span className="cpl-kicker">CHUKA COMRADES FOOTBALL</span><h1>Chuka Premier League</h1><p>{data?.season?.name||"League centre"} · League A & B</p></div><button className="cpl-refresh" onClick={()=>void load()} aria-label="Refresh"><RefreshCw size={16}/></button></header>
+  {notice&&<div className="cpl-notice" role="status"><AlertCircle size={16}/>{notice}</div>}
+  {!user?<Panel title="Welcome to the league"><p>Browse teams, fixtures, results and league news. Sign in to follow teams, apply for an official role or take part in weekly voting.</p><button className="cpl-btn cta" onClick={onSignIn}>Sign in with Google</button></Panel>:loading?<Panel title="Loading your CPL dashboard"><p>Connecting to the league database…</p></Panel>:!me?<Panel title="CPL service"><p>We could not load your league account. {notice}</p><button className="cpl-btn" onClick={()=>void load()}>Try again</button></Panel>:<>
+   <div className="cpl-account"><div><span className="cpl-kicker">SIGNED IN AS</span><strong>{me.displayName||me.email}</strong><small>{me.email}</small></div><span className="cpl-role">{roleLabels[activeRole]}</span></div>
+   <nav className="cpl-tabs">{nav.filter(([id])=>id!=="applications"||activeRole==="chairman"||activeRole==="coach").map(([id,label,Icon])=><button key={String(id)} className={tab===id?"on":""} onClick={()=>setTab(String(id))}>{Icon&&<Icon size={15} />}{label as string}</button>)}</nav>
+   {tab==="overview"&&<div className="cpl-dashboard-grid">
+    <Panel title="League at a glance"><div className="cpl-stat-grid"><div><b>{teams.length}</b><span>Active teams</span></div><div><b>{fixtures.length}</b><span>Fixtures</span></div><div><b>{reports.length}</b><span>Official results</span></div></div><p>Current season: <strong>{data?.season?.name}</strong></p></Panel>
+    <Panel title="Your account"><p>Current role: <strong>{roleLabels[activeRole]}</strong></p><p>Approved permissions are controlled by the CPL chairman.</p><button className="cpl-btn ghost" onClick={()=>setTab("applications")}>Manage applications / role access</button></Panel>
+    <Panel title="Request an official role"><p>Official roles require chairman approval. You can apply for Player, Team Coach or Referee access.</p><div className="cpl-form">{field("Role",<select value={role} onChange={e=>setRole(e.target.value as CplRole)}><option value="player">Player</option><option value="coach">Team Coach</option><option value="referee">Referee</option></select>)}<button className="cpl-btn" disabled={busy} onClick={()=>void run("request_role",{role,teamId:""},"Application submitted for chairman review.")}>Submit application</button></div></Panel>
+    {activeRole==="player"&&<Panel title="Player dashboard"><p>Track your registration application, team membership and approved player profile here. Match appearances and career statistics will populate from verified match reports.</p><button className="cpl-btn" onClick={()=>setTab("applications")}>Open player registration</button></Panel>}
+    {activeRole==="coach"&&<Panel title="Team coach dashboard"><p>Manage your assigned team's squad applications, private match contributions and team information. Only the team assigned to your account is editable.</p><button className="cpl-btn" onClick={()=>setTab("applications")}>Review player applications</button><button className="cpl-btn ghost" onClick={()=>setTab("finance")}>Open team finance</button></Panel>}
+    {activeRole==="referee"&&<Panel title="Referee dashboard"><p>View match assignments and submit match reports. Submitted scores remain pending until the chairman verifies them.</p><button className="cpl-btn" onClick={()=>setTab("fixtures")}>Open match assignments</button></Panel>}
+    {activeRole==="fan"&&<Panel title="Fan dashboard"><p>Follow your favourite teams and participate in Player, Goal and Manager of the Week voting.</p><button className="cpl-btn" onClick={()=>setTab("voting")}>Vote in weekly awards</button></Panel>}
+    {me.isChairman&&<Panel title="Chairman control centre"><p>{pendingRoles.length} role applications awaiting review. You control team registration, fixtures, result verification, season setup and official role approvals.</p><button className="cpl-btn" onClick={()=>setTab("applications")}>Review applications</button><button className="cpl-btn ghost" onClick={()=>setTab("teams")}>Manage teams</button><div className="cpl-form">{field("New season",<input value={seasonName} onChange={e=>setSeasonName(e.target.value)} placeholder="e.g. CPL 2027"/>)}<button className="cpl-btn" disabled={!seasonName.trim()||busy} onClick={()=>void run("chairman_save_season",{name:seasonName},"New season created and previous season archived.")}>Start season</button></div></Panel>}
+   </div>}
+   {tab==="teams"&&<Panel title="League teams">{teams.length?teams.map(t=><div className="cpl-team" key={t.id}><span className="cpl-badge">{t.name.slice(0,2).toUpperCase()}</span><span><strong>{t.name}</strong><small>League {t.league} · {t.description}</small></span>{user&&<button className="cpl-follow" onClick={()=>void run(me.follows.some(f=>f.teamId===t.id)?"unfollow_team":"follow_team",{teamId:t.id},me.follows.some(f=>f.teamId===t.id)?"Team unfollowed.":"Team followed.")}>{me.follows.some(f=>f.teamId===t.id)?"Following":"Follow"}</button>}</div>):<p className="cpl-empty">No teams have been registered yet.</p>}
+    {me.isChairman&&<><h3>Register a team</h3><div className="cpl-form">{field("Team name",<input value={teamName} onChange={e=>setTeamName(e.target.value)}/>)}{field("Division",<select value={division} onChange={e=>setDivision(e.target.value as "A"|"B")}><option>A</option><option>B</option></select>)}{field("Coach email (optional)",<input type="email" value={coachEmail} onChange={e=>setCoachEmail(e.target.value)} placeholder="Coach's signed-in email"/>)}<button className="cpl-btn" disabled={!teamName.trim()||busy} onClick={()=>void run("chairman_save_team",{name:teamName,division,coachEmail},"Team registered.")}> <Plus size={14}/> Add team</button></div></>}
+   </Panel>}
+   {tab==="fixtures"&&<Panel title="Fixtures and results">{fixtures.length?fixtures.map(f=><article className="cpl-record" key={f.id}><strong>{teams.find(t=>t.id===f.homeTeamId)?.name||"Home"} vs {teams.find(t=>t.id===f.awayTeamId)?.name||"Away"}</strong><span>{f.kickoff} · {f.venue} · {f.status}</span></article>):<p className="cpl-empty">No fixtures published yet.</p>}
+    {activeRole==="chairman"&&<><h3>Create fixture</h3><div className="cpl-form">{field("Home team",<select value={home} onChange={e=>setHome(e.target.value)}><option value="">Select team</option>{teamOptions}</select>)}{field("Away team",<select value={away} onChange={e=>setAway(e.target.value)}><option value="">Select team</option>{teamOptions}</select>)}{field("Kick-off",<input type="datetime-local" value={kickoff} onChange={e=>setKickoff(e.target.value)}/>)}{field("Venue",<input value={venue} onChange={e=>setVenue(e.target.value)}/>)}<button className="cpl-btn" disabled={!home||!away||home===away||!kickoff||busy} onClick={()=>void run("coach_create_fixture",{homeTeamId:home,awayTeamId:away,kickoff,venue,division:"A"},"Fixture created.")}>Create fixture</button></div></>}
+    {activeRole==="referee"&&<><h3>Your assigned matches</h3>{me.assignedFixtures.map(f=><article className="cpl-record" key={f.id}><strong>{teams.find(t=>t.id===f.homeTeamId)?.name||"Home"} vs {teams.find(t=>t.id===f.awayTeamId)?.name||"Away"}</strong><span>{f.kickoff} · {f.status} · ID: {f.id}</span></article>)}<h3>Submit match report</h3><div className="cpl-form">{field("Fixture ID",<input value={fixtureId} onChange={e=>setFixtureId(e.target.value)}/>)}{field("Home score",<input type="number" min="0" value={homeScore} onChange={e=>setHomeScore(e.target.value)}/>)}{field("Away score",<input type="number" min="0" value={awayScore} onChange={e=>setAwayScore(e.target.value)}/>)}<button className="cpl-btn" disabled={!fixtureId||busy} onClick={()=>void run("submit_match_report",{fixtureId,homeScore:Number(homeScore),awayScore:Number(awayScore),events:[]},"Match report submitted for chairman verification.")}>Submit report</button></div></>}
+    {activeRole==="chairman"&&reports.filter(x=>x.status==="pending_verification").map(r=><div className="cpl-record" key={r.id}><span>Pending report: {r.id}</span><button className="cpl-btn" onClick={()=>void run("verify_match_report",{reportId:r.id,approve:true},"Result verified and published.")}><CheckCircle2 size={14}/> Verify result</button></div>)}
+   </Panel>}
+   {tab==="applications"&&<Panel title={activeRole==="chairman"?"Role and player applications":"Your applications"}>
+    {activeRole==="player"&&<><h3>Player registration</h3><div className="cpl-form">{field("Full name",<input value={fullName} onChange={e=>setFullName(e.target.value)}/>)}{field("Team",<select value={applyTeam} onChange={e=>setApplyTeam(e.target.value)}><option value="">Select team</option>{teamOptions}</select>)}{field("Position",<input value={position} onChange={e=>setPosition(e.target.value)} placeholder="e.g. Midfielder"/>)}{field("Jersey number",<input value={jersey} onChange={e=>setJersey(e.target.value)}/>)}<button className="cpl-btn" disabled={!fullName||!applyTeam||busy} onClick={()=>void run("player_apply",{fullName,teamId:applyTeam,position,jerseyNumber:jersey},"Player application submitted.")}>Apply to register</button></div></>}
+    {me.roleRequests.map(a=><article className="cpl-record" key={a.id}><strong>{roleLabels[a.requestedRole as CplRole]||a.requestedRole}</strong><span>{a.status}</span></article>)}
+    {activeRole==="chairman"&&pendingRoles.map(a=><article className="cpl-record" key={a.id}><div><strong>{a.email} · {a.requestedRole}</strong><small>Team: {a.teamId||"Not specified"}</small></div><div className="cpl-actions"><button className="cpl-btn" onClick={()=>void run("chairman_review_role",{requestId:a.id,approve:true},"Role approved.")}>Approve</button><button className="cpl-btn danger" onClick={()=>void run("chairman_review_role",{requestId:a.id,approve:false},"Application rejected.")}>Reject</button></div></article>)}
+    {(activeRole==="coach"||activeRole==="chairman")&&me.playerApplications.map(a=><article className="cpl-record" key={a.id}><div><strong>{a.fullName}</strong><small>{teams.find(t=>t.id===a.teamId)?.name||a.teamId} · {a.position} · #{a.jerseyNumber}</small></div><div className="cpl-actions"><button className="cpl-btn" onClick={()=>void run("chairman_review_player",{applicationId:a.id,approve:true},"Player application approved.")}>Approve</button><button className="cpl-btn danger" onClick={()=>void run("chairman_review_player",{applicationId:a.id,approve:false},"Player application rejected.")}>Reject</button></div></article>)}
+   </Panel>}
+   {tab==="voting"&&<Panel title="Public weekly awards"><p>One vote per signed-in account in each category per week.</p><div className="cpl-form">{field("Award",<select value={voteCategory} onChange={e=>setVoteCategory(e.target.value)}><option value="player_of_week">Player of the Week</option><option value="goal_of_week">Goal of the Week</option><option value="manager_of_week">Manager of the Week</option></select>)}{field("Nominee ID",<input value={nominee} onChange={e=>setNominee(e.target.value)} placeholder="Nominee record ID"/>)}<button className="cpl-btn" disabled={!nominee||busy} onClick={()=>void run("submit_vote",{category:voteCategory,nomineeId:nominee},"Your vote has been recorded.")}>Cast vote</button></div></Panel>}
+   {tab==="finance"&&<Panel title="Team finance"><p>Private team finance records are visible only to the assigned coach and chairman.</p>{field("Team",<select value={financeTeam} onChange={e=>setFinanceTeam(e.target.value)}><option value="">Select team</option>{teamOptions}</select>)}{field("Amount (KSh)",<input type="number" min="1" value={amount} onChange={e=>setAmount(e.target.value)}/>)}{field("Description",<input value={financeDesc} onChange={e=>setFinanceDesc(e.target.value)} placeholder="Match contribution, equipment…"/>)}<button className="cpl-btn" disabled={!financeTeam||!amount||busy} onClick={()=>void run("save_finance",{teamId:financeTeam,amount:Number(amount),description:financeDesc,visibility:"private"},"Finance record saved.")}>Record contribution / expense</button></Panel>}
+   {tab==="news"&&<Panel title="League news"><div>{(data?.news||[]).map(n=><article className="cpl-record" key={n.id}><strong>{n.title}</strong><span>{n.body}</span></article>)}</div>{activeRole==="chairman"&&<p>News publishing can be enabled from the chairman tools in the next backend module.</p>}</Panel>}
+  </>}
+ </main>;
 }

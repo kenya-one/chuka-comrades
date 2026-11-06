@@ -82,3 +82,16 @@
 .cc-hostel__rooms b{display:grid;place-items:center;min-width:52px;height:52px;padding:0 8px;border-radius:12px;background:#2f9e57;color:#fff;font-size:2rem;font-weight:900;line-height:1;box-sizing:border-box}
 .cc-hostel__rooms span{font-weight:800;font-size:.95rem;line-height:1.2;text-transform:uppercase;letter-spacing:.3px}
 .cc-hostel__rooms.is-full{background:#fdeceb;border-color:#d64545;color:#a12727}.cc-hostel__rooms.is-full b{background:#d64545}
+
+/* Hostel admin editing controls */
+.cc-hostel__edit-form{border:2px solid #b9d8ca;background:#fbfdfc}
+.cc-hostel__current-photos{display:flex;gap:9px;flex-wrap:wrap}
+.cc-hostel__current-photos img{width:112px;height:82px;object-fit:cover;border-radius:9px;border:1px solid #dce8e2}
+.cc-hostel__modal-close{display:grid;place-items:center;width:38px;height:38px;border:1px solid #d6e3dc;border-radius:9px;background:#fff;color:#315b4d;cursor:pointer}
+.cc-hostel__edit-actions{display:flex;gap:9px;flex-wrap:wrap}
+.cc-hostel__edit-actions button{border:1px solid #d5e2dc;border-radius:8px;background:#fff;color:#315b4d;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer}
+.cc-hostel__edit-actions button.cc-hostel__primary{border:0;background:#17634f;color:#fff}
+.cc-hostel__edit-actions button:disabled{opacity:.6;cursor:wait}
+.cc-hostel__manage-row button{display:inline-flex;align-items:center;gap:5px}
+.cc-hostel__manage-row .cc-hostel__delete-button{border-color:#f0c8c5;color:#a32d25;background:#fff8f7}
+.cc-hostel__manage-row .cc-hostel__delete-button:hover{background:#fff0ee}

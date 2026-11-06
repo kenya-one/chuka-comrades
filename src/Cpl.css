@@ -34,3 +34,21 @@
  .cpl-team{border-color:#233a2d}.cpl-badge{background:#1d3a2a;color:#7fe0aa}.cpl-form input,.cpl-form select{background:#0f1813;border-color:#2c4a39;color:inherit}
  .cpl-team-main small,.cpl-teamhead small,.cpl-empty,.cpl-soon{color:#9bb8a8}.cpl-back{color:#7fe0aa}
 }
+
+/* CPL role dashboards */
+.cpl-account{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;margin:18px 0;background:#111d30;border:1px solid #263750;border-radius:14px;color:#fff}
+.cpl-account>div{display:grid;gap:4px}.cpl-account strong{font-size:16px}.cpl-account small{color:#9eacc0}
+.cpl-role{background:#d7ad51;color:#172033;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800;text-transform:capitalize}
+.cpl-dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:14px}
+.cpl-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cpl-stat-grid>div{display:grid;gap:4px;padding:14px;background:#0d1727;border-radius:10px}
+.cpl-stat-grid b{font-size:25px;color:#e4bd67}.cpl-stat-grid span{font-size:12px;color:#aab6c7}
+.cpl-field{display:grid;gap:6px;color:#c8d2e0;font-size:13px;min-width:0}.cpl-field input,.cpl-field select{width:100%;min-width:0;background:#0c1626;color:#fff;border:1px solid #34445c;border-radius:8px;padding:11px;font:inherit}
+.cpl-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));align-items:end;gap:12px;margin:14px 0}
+.cpl-record{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid #29374d;color:#eef2f7;flex-wrap:wrap}
+.cpl-record span,.cpl-record small{color:#9eacc0;font-size:12px}
+.cpl-actions{display:flex;gap:8px;flex-wrap:wrap}.cpl-btn.danger{background:#612e35;color:#fff}
+.cpl-notice{display:flex;align-items:center;gap:8px;background:#2b271c;border:1px solid #806632;color:#f0d28d;padding:12px 14px;border-radius:10px;margin:14px 0}
+.cpl-panel h2{font-size:19px;margin:0 0 14px;color:#f5f7fa}.cpl-panel h3{margin:22px 0 10px;color:#e4bd67}
+.cpl-tabs{display:flex;gap:7px;overflow-x:auto;padding:5px 0 14px}.cpl-tabs button{display:flex;align-items:center;gap:7px;white-space:nowrap}
+@media(max-width:620px){.cpl-account{align-items:flex-start}.cpl-stat-grid b{font-size:21px}.cpl-record{align-items:flex-start;flex-direction:column}}

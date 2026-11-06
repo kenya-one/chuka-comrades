@@ -187,4 +187,7 @@ export const hostelApi = {
 
   updateListing: (user: User, id: string, update: Record<string, unknown>) =>
     post(user, { action: "update_listing", hostelId: id, updates: update }),
+
+  deleteListing: (user: User, id: string) =>
+    post<{ id: string; deleted: boolean }>(user, { action: "delete_listing", hostelId: id }),
 };

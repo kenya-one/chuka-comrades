@@ -1,0 +1,24 @@
+.sla-admin{display:flex;flex-direction:column;gap:14px}
+.sla-sections,.sla-filter{display:flex;gap:8px;flex-wrap:wrap}
+.sla-sections button,.sla-filter button{border:1px solid #dfe5ec;background:#fff;color:#182230;border-radius:999px;padding:8px 15px;font-weight:600;font-size:14px;cursor:pointer}
+.sla-sections button.active,.sla-filter button.active{background:#0b3d2e;border-color:#0b3d2e;color:#fff}
+.sla-list{display:flex;flex-direction:column;gap:10px}
+.sla-row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;background:#fff;border:1px solid #e7ebf0;border-radius:14px;padding:14px 16px}
+.sla-row-main{display:flex;flex-direction:column;gap:4px;min-width:0}
+.sla-row-main span,.sla-row-main small{color:#667085;font-size:13px}
+.sla-row-main p{margin:2px 0;font-size:14px;color:#344054}
+.sla-row-main em{color:#b42318;font-size:13px;font-style:normal}
+.sla-open{display:inline-flex;align-items:center;gap:5px;color:#0b3d2e;font-size:13px;font-weight:600;margin-top:4px;text-decoration:none}
+.sla-badge{flex:none;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700}
+.sla-pending{background:#fff4d6;color:#8a5a00}.sla-active{background:#dcf5e6;color:#0b6b3a}.sla-rejected{background:#fde4e1;color:#b42318}
+.sla-actions{display:flex;gap:8px;flex-wrap:wrap;flex:none}
+.sla-actions button{display:inline-flex;align-items:center;gap:5px;border:0;border-radius:10px;padding:9px 13px;font-weight:700;font-size:13px;cursor:pointer}
+.sla-actions button:disabled{opacity:.5;cursor:default}
+.sla-approve{background:#0b6b3a;color:#fff}.sla-reject{background:#fde4e1;color:#b42318}
+.sla-empty{text-align:center;padding:30px 16px;color:#667085;background:#fff;border:1px dashed #d0d7e0;border-radius:14px}
+.sla-form{display:flex;flex-direction:column;gap:12px;background:#fff;border:1px solid #e7ebf0;border-radius:14px;padding:16px}
+.sla-form h3{margin:0}
+.sla-form label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#344054}
+.sla-form input,.sla-form textarea{border:1px solid #d0d7e0;border-radius:10px;padding:10px 12px;font:inherit;font-weight:400}
+.sla-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+@media(max-width:640px){.sla-row{flex-direction:column}.sla-admin-row .sla-actions{width:100%}}

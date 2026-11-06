@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import type { User } from "firebase/auth";
-import { BadgeCheck, Building2, CalendarDays, Camera, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, MapPin, MessageCircle, Phone, RefreshCw, ShieldCheck, X, ZoomIn } from "lucide-react";
+import { BadgeCheck, Building2, CalendarDays, Camera, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, MapPin, MessageCircle, Phone, RefreshCw, ShieldCheck, X, ZoomIn, Pencil, Trash2 } from "lucide-react";
 import { hostelApi, type HostelAdminData, type HostelListing, type HostelSettings } from "./lib/hostelApi";
 import "./HostelSection.css";
 
@@ -68,6 +68,7 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
+  const [editingListing, setEditingListing] = useState<HostelListing | null>(null);
 
   const loadListings = useCallback(async () => {
     const result = await hostelApi.publicListings();
@@ -121,6 +122,36 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
       await hostelApi.createListing(user, payload);
       setNotice("Hostel added and published successfully.");
       await refresh();
+    } finally { setBusy(""); }
+  }
+
+  async function saveListingEdit(listing: HostelListing, updates: Record<string, unknown>) {
+    if (!user) throw new Error("Sign in with the authorized hostel admin account.");
+    setBusy(`edit-${listing.id}`); setError(""); setNotice("");
+    try {
+      await hostelApi.updateListing(user, listing.id, updates);
+      setEditingListing(null);
+      await refresh();
+      setNotice(`${listing.name} was updated successfully.`);
+    } catch (err) {
+      throw err;
+    } finally { setBusy(""); }
+  }
+
+  async function deleteListing(listing: HostelListing) {
+    if (!user) return;
+    const confirmed = window.confirm(
+      `Permanently delete "${listing.name}"? This removes the hostel listing from the directory. This action cannot be undone.`
+    );
+    if (!confirmed) return;
+    setBusy(`delete-${listing.id}`); setError(""); setNotice("");
+    try {
+      await hostelApi.deleteListing(user, listing.id);
+      if (editingListing?.id === listing.id) setEditingListing(null);
+      await refresh();
+      setNotice(`${listing.name} was permanently deleted.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete this hostel.");
     } finally { setBusy(""); }
   }
 
@@ -193,7 +224,24 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
       <AdminCreateHostelForm user={user} busy={busy === "create"} maxImages={settings.maxImagesPerHostel} onCreate={createListing}/>
       <div className="cc-hostel__admin-heading"><div><span className="cc-hostel__eyebrow">ADMIN ONLY</span><h2>Hostel management desk</h2><p>Add WhatsApp-submitted hostels, publish listings and control availability.</p></div><BadgeCheck size={30}/></div>
       <h3>Published / unavailable listings ({adminData.listings.length})</h3>
-      {adminData.listings.map((item) => <div className="cc-hostel__manage-row" key={item.id}><span><strong>{item.name}</strong><small>{item.area} · {money(item.rent_amount)}</small></span><span className="cc-hostel__status">{item.status}</span><button onClick={() => void updateStatus(item, item.status === "published" ? "unavailable" : "published")} disabled={busy === item.id}>{item.status === "published" ? "Mark unavailable" : "Republish"}</button><button onClick={() => void shareListing(item)}>Share to WhatsApp</button></div>)}
+      {adminData.listings.length === 0 && <p className="cc-hostel__empty">No hostel listings yet.</p>}
+      {adminData.listings.map((item) => <div className="cc-hostel__manage-row" key={item.id}>
+        <span><strong>{item.name}</strong><small>{item.area} · {money(item.rent_amount)} · {item.available_rooms} available / {item.total_rooms ?? "—"} total rooms</small></span>
+        <span className="cc-hostel__status">{item.status}</span>
+        <button onClick={() => setEditingListing(item)} disabled={busy !== ""}><Pencil size={14}/> Edit</button>
+        <button onClick={() => void updateStatus(item, item.status === "published" ? "unavailable" : "published")} disabled={busy === item.id}>{item.status === "published" ? "Mark unavailable" : "Republish"}</button>
+        <button onClick={() => void shareListing(item)} disabled={busy !== ""}>Share to WhatsApp</button>
+        <button className="cc-hostel__delete-button" onClick={() => void deleteListing(item)} disabled={busy !== ""}><Trash2 size={14}/> Delete</button>
+      </div>)}
+      {editingListing && <AdminEditHostelForm
+        key={editingListing.id}
+        user={user}
+        listing={editingListing}
+        busy={busy === `edit-${editingListing.id}`}
+        maxImages={settings.maxImagesPerHostel}
+        onCancel={() => setEditingListing(null)}
+        onSave={(updates) => saveListingEdit(editingListing!, updates)}
+      />}
     </div>}
   </section>;
 }
@@ -269,6 +317,108 @@ function AdminCreateHostelForm({ user, busy, maxImages, onCreate }: {
     <label className="cc-hostel__consent"><input type="checkbox" required/><span>I have confirmed that the landlord authorized publication of these photos and contact number.</span></label>
     {error && <p className="cc-hostel__error" role="alert">{error}</p>}
     <button className="cc-hostel__primary" disabled={busy}>{busy ? "Uploading and publishing…" : "Add and publish hostel"}</button>
+  </form>;
+}
+
+
+
+function AdminEditHostelForm({ user, listing, busy, maxImages, onCancel, onSave }: {
+  user: User | null;
+  listing: HostelListing;
+  busy: boolean;
+  maxImages: number;
+  onCancel: () => void;
+  onSave: (updates: Record<string, unknown>) => Promise<void>;
+}) {
+  const [form, setForm] = useState({
+    name: listing.name,
+    description: listing.description || "",
+    area: listing.area,
+    landmark: listing.landmark || "",
+    location_url: listing.location_url || "",
+    rent_amount: String(listing.rent_amount),
+    rent_period: listing.rent_period,
+    room_type: listing.room_type,
+    total_rooms: listing.total_rooms == null ? "" : String(listing.total_rooms),
+    available_rooms: String(listing.available_rooms),
+    available_from: listing.available_from || "",
+    facilities: listing.facilities.join(", "),
+    contact_name: listing.contact_name || "",
+    landlord_contact: listing.landlord_contact,
+    verified: listing.verified,
+    status: listing.status,
+  });
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    if (!user) { setError("Sign in with the authorized admin account."); return; }
+    const total = form.total_rooms.trim() === "" ? null : Number(form.total_rooms);
+    const available = Number(form.available_rooms);
+    if (total !== null && (!Number.isInteger(total) || total < 0)) {
+      setError("Total rooms must be a non-negative whole number."); return;
+    }
+    if (!Number.isInteger(available) || available < 0) {
+      setError("Available rooms must be a non-negative whole number."); return;
+    }
+    if (total !== null && available > total) {
+      setError("Available rooms cannot be greater than total rooms."); return;
+    }
+    if (photos.length > maxImages || photos.some((photo) => photo.size > 5 * 1024 * 1024)) {
+      setError(`Choose up to ${maxImages} photos, each 5 MB or smaller.`); return;
+    }
+    try {
+      let images: { base64: string; mimeType: string; name: string }[] | undefined;
+      if (photos.length) {
+        images = await Promise.all(photos.map(async (photo) => ({
+          base64: await fileToBase64(photo), mimeType: photo.type, name: photo.name,
+        })));
+      }
+      await onSave({
+        ...form,
+        rent_amount: Number(form.rent_amount),
+        total_rooms: total,
+        available_rooms: available,
+        facilities: form.facilities.split(",").map((value) => value.trim()).filter(Boolean),
+        images,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update this hostel.");
+    }
+  }
+
+  return <form className="cc-hostel__form cc-hostel__edit-form" onSubmit={submit}>
+    <div className="cc-hostel__form-heading">
+      <div><span className="cc-hostel__eyebrow">ADMIN ONLY · EDIT LISTING</span><h3>Edit {listing.name}</h3>
+      <p>Update the hostel details and room counts. Leave photos unselected to keep the current photos.</p></div>
+      <button type="button" className="cc-hostel__modal-close" onClick={onCancel} aria-label="Close editor"><X size={20}/></button>
+    </div>
+    <div className="cc-hostel__current-photos">
+      {listing.image_urls.map((url, index) => <img key={`${url}-${index}`} src={url} alt={`${listing.name} current photo ${index + 1}`}/>)}
+    </div>
+    <div className="cc-hostel__form-grid">
+      <label>Hostel name<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>
+      <label>Landlord / caretaker name<input required value={form.contact_name} onChange={e=>setForm({...form,contact_name:e.target.value})}/></label>
+      <label>Area / location<input required value={form.area} onChange={e=>setForm({...form,area:e.target.value})}/></label>
+      <label>Nearby landmark<input value={form.landmark} onChange={e=>setForm({...form,landmark:e.target.value})}/></label>
+      <label>Google Maps link<input type="url" value={form.location_url} onChange={e=>setForm({...form,location_url:e.target.value})}/></label>
+      <label>Rent (KSh)<input type="number" min="0" required value={form.rent_amount} onChange={e=>setForm({...form,rent_amount:e.target.value})}/></label>
+      <label>Rent period<select value={form.rent_period} onChange={e=>setForm({...form,rent_period:e.target.value})}><option value="month">Per month</option><option value="semester">Per semester</option></select></label>
+      <label>Room type<input required value={form.room_type} onChange={e=>setForm({...form,room_type:e.target.value})}/></label>
+      <label>Total rooms<input type="number" min="0" value={form.total_rooms} onChange={e=>setForm({...form,total_rooms:e.target.value})}/></label>
+      <label>Available rooms<input type="number" min="0" required value={form.available_rooms} onChange={e=>setForm({...form,available_rooms:e.target.value})}/></label>
+      <label>Available from<input type="date" value={form.available_from} onChange={e=>setForm({...form,available_from:e.target.value})}/></label>
+      <label>Landlord WhatsApp / call number<input required type="tel" value={form.landlord_contact} onChange={e=>setForm({...form,landlord_contact:e.target.value})}/></label>
+      <label className="cc-hostel__wide">Facilities<input value={form.facilities} onChange={e=>setForm({...form,facilities:e.target.value})}/></label>
+      <label className="cc-hostel__wide">Description<textarea rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label>
+      <label>Listing status<select value={form.status} onChange={e=>setForm({...form,status:e.target.value as "published" | "unavailable"})}><option value="published">Published</option><option value="unavailable">Unavailable</option></select></label>
+      <label>Verification<select value={form.verified ? "true" : "false"} onChange={e=>setForm({...form,verified:e.target.value === "true"})}><option value="true">Verified</option><option value="false">Not verified</option></select></label>
+      <label className="cc-hostel__wide cc-hostel__photo-field"><span><Camera size={17}/> Replace photos (optional)</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e=>setPhotos(Array.from(e.target.files||[]).filter(f=>f.type.startsWith("image/")).slice(0,maxImages))}/><small>{photos.length ? `${photos.length} replacement photo(s) selected. Saving replaces the current photo set.` : "No new photos selected — existing photos will be kept."}</small></label>
+    </div>
+    {error && <p className="cc-hostel__error" role="alert">{error}</p>}
+    <div className="cc-hostel__edit-actions"><button type="button" onClick={onCancel}>Cancel</button><button className="cc-hostel__primary" disabled={busy}>{busy ? "Saving changes…" : "Save hostel changes"}</button></div>
   </form>;
 }
 
