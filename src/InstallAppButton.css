@@ -1,4 +1,3 @@
-
 .install-app-wrap {
   position: relative;
   display: inline-flex;
@@ -6,32 +5,46 @@
   z-index: 30;
 }
 
-.install-app-button {
+.install-app-button,
+.whatsapp-share-button {
   min-height: 43px;
-  padding: 0 14px;
+  padding: 0 15px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid #dce9df;
   border-radius: 12px;
-  background: #ffffff;
-  color: #155c39;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
-  transition: background .2s, transform .2s;
+  transition:
+    background .2s,
+    transform .2s,
+    box-shadow .2s;
+}
+
+.install-app-button {
+  border: 1px solid #dce9df;
+  background: #ffffff;
+  color: #155c39;
 }
 
 .install-app-button:hover {
   background: #edf5ef;
   transform: translateY(-1px);
+  box-shadow: 0 8px 20px #173b2818;
 }
 
-.install-app-button img {
-  width: 27px;
-  height: 27px;
-  object-fit: contain;
+.whatsapp-share-button {
+  border: 1px solid #dce9df;
+  background: #155c39;
+  color: #ffffff;
+}
+
+.whatsapp-share-button:hover {
+  background: #10472c;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px #155c3928;
 }
 
 .install-instructions {
@@ -86,32 +99,14 @@
 }
 
 @media (max-width: 760px) {
-  .onepage-header > .install-app-wrap {
-    order: 2;
+  .install-app-button,
+  .whatsapp-share-button {
+    min-height: 40px;
+    padding: 0 12px;
   }
 
-  .onepage-header > .header-signin {
-    order: 3;
-  }
-
-  .onepage-header > .onepage-nav {
-    order: 4;
-  }
-
-  .install-app-button {
-    width: 38px;
-    min-height: 36px;
-    height: 36px;
-    padding: 4px;
-    border-radius: 10px;
-  }
-
-  .install-app-button img {
-    width: 27px;
-    height: 27px;
-  }
-
-  .install-app-button span {
+  .install-app-button span,
+  .whatsapp-share-button span {
     display: none;
   }
 

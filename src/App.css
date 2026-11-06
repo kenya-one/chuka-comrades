@@ -9,6 +9,31 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+.landing-app-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .landing-app-actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .landing-app-actions .install-app-button,
+  .landing-app-actions .whatsapp-share-button {
+    min-height: 42px;
+    padding: 0 13px;
+  }
+
+  .landing-app-actions .install-app-button span,
+  .landing-app-actions .whatsapp-share-button span {
+    display: inline;
+  }
+}
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }

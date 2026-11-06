@@ -374,6 +374,8 @@ function App() {
               <div className="hero-actions">
                 <button className="google-button" onClick={handleGoogleSignIn} disabled={busy}>
                   <GoogleMark />
+                   <InstallAppButton />
+                   <WhatsAppShareButton />
                   <span>{busy ? "Connecting to Google…" : "Continue with Google"}</span>
                   {!busy && <ArrowUpRight className="button-arrow" size={17} />}
                 </button>

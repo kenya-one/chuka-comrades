@@ -1,6 +1,5 @@
-
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { Download, Share2, X } from 'lucide-react'
 import './InstallAppButton.css'
 
 interface BeforeInstallPromptEvent extends Event {
@@ -53,7 +52,17 @@ export default function InstallAppButton() {
   }, [])
 
   const handleInstall = async () => {
-    if (!installPrompt) return
+    if (!installPrompt) {
+      if (isIOS) {
+        setShowInstructions(!showInstructions)
+      } else {
+        alert(
+          'To install Chuka Comrades, use your browser menu and select "Install Chuka Comrades" or "Add to Home Screen".'
+        )
+      }
+
+      return
+    }
 
     await installPrompt.prompt()
 
@@ -68,26 +77,15 @@ export default function InstallAppButton() {
 
   if (isInstalled) return null
 
-  if (!isIOS && !installPrompt) return null
-
   return (
     <div className="install-app-wrap">
       <button
         className="install-app-button"
-        onClick={() => {
-          if (isIOS) {
-            setShowInstructions(!showInstructions)
-          } else {
-            void handleInstall()
-          }
-        }}
+        onClick={() => void handleInstall()}
         aria-label="Install Chuka Comrades app"
       >
-        <img
-          src={`${import.meta.env.BASE_URL}chukalogo.png`}
-          alt=""
-        />
-        <span>Install app</span>
+        <Download size={18} />
+        <span>Install App</span>
       </button>
 
       {isIOS && showInstructions && (
@@ -111,9 +109,38 @@ export default function InstallAppButton() {
             <li>Tap Add to finish.</li>
           </ol>
 
-          <small>Your Chuka Comrades logo will appear on your Home Screen.</small>
+          <small>
+            Your Chuka Comrades logo will appear on your Home Screen.
+          </small>
         </div>
       )}
     </div>
+  )
+}
+
+export function WhatsAppShareButton() {
+  const handleWhatsAppShare = () => {
+    const shareText =
+      'Join me on Chuka Comrades — your campus community platform. Connect, learn and grow together.'
+
+    const shareUrl = window.location.href
+
+    const whatsappUrl =
+      `https://wa.me/?text=${encodeURIComponent(
+        `${shareText}\n\n${shareUrl}`
+      )}`
+
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  return (
+    <button
+      className="whatsapp-share-button"
+      onClick={handleWhatsAppShare}
+      aria-label="Share Chuka Comrades on WhatsApp"
+    >
+      <Share2 size={18} />
+      <span>Share on WhatsApp</span>
+    </button>
   )
 }
