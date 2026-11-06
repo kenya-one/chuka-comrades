@@ -1,4 +1,3 @@
-
 name: Deploy Chuka Comrades to GitHub Pages
 
 on:
@@ -48,6 +47,7 @@ jobs:
 
           VITE_CHUKA_SOKO_API_URL: ${{ secrets.VITE_CHUKA_SOKO_API_URL }}
           VITE_EFOOTBALL_API_URL: ${{ secrets.VITE_EFOOTBALL_API_URL }}
+          VITE_GAMES_API_URL: ${{ secrets.VITE_GAMES_API_URL }}
 
           VITE_HOSTEL_API_URL: ${{ secrets.VITE_HOSTEL_API_URL }}
 
