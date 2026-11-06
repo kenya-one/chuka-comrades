@@ -281,7 +281,7 @@ function App() {
     return (
       <main className="loading-screen">
         <div className="loading-mark">
-          <img public="/chukalogo.png" alt="" />
+          <img src="/chuka%20crest.jfif" alt="" />
         </div>
         <p>Opening your campus community…</p>
       </main>
@@ -293,12 +293,8 @@ function App() {
       <header className="site-header">
         <a className="brand" href="#home" aria-label="Chuka Comrades home">
           <span className="brand-crest-wrap">
-  <img
-    className="brand-crest"
-    src={`${import.meta.env.BASE_URL}chukalogo.png`}
-    alt="Chuka University crest"
-  />
-</span>
+            <img className="brand-crest" src="/chuka%20crest.jfif" alt="Chuka University crest" />
+          </span>
           <span className="brand-copy">
             <strong>Chuka Comrades</strong>
             <small>Your campus. Your community.</small>

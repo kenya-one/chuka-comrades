@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a6f5a"/><stop offset=".55" stop-color="#e9a95a"/><stop offset="1" stop-color="#f6d79a"/></linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a5a3a"/><stop offset="1" stop-color="#4b3622"/></linearGradient>
+    <pattern id="stripeG" width="40" height="10" patternUnits="userSpaceOnUse"><rect width="40" height="10" fill="#fff7e4"/><rect width="20" height="10" fill="#1f9b5b"/></pattern>
+    <pattern id="stripeA" width="40" height="10" patternUnits="userSpaceOnUse"><rect width="40" height="10" fill="#fff7e4"/><rect width="20" height="10" fill="#e9852b"/></pattern>
+    <pattern id="stripeB" width="40" height="10" patternUnits="userSpaceOnUse"><rect width="40" height="10" fill="#fff7e4"/><rect width="20" height="10" fill="#2b6fc4"/></pattern>
+  </defs>
+  <rect width="1200" height="520" fill="url(#sky)"/>
+  <circle cx="930" cy="170" r="92" fill="#fff3c4" opacity=".55"/><circle cx="930" cy="170" r="56" fill="#fff8dc" opacity=".8"/>
+  <path d="M0 300 Q150 230 300 290 T600 280 T900 285 T1200 270 V520 H0Z" fill="#1d5a49" opacity=".55"/>
+  <path d="M0 330 Q200 280 420 325 T820 320 T1200 310 V520 H0Z" fill="#17493b" opacity=".7"/>
+  <rect y="400" width="1200" height="120" fill="url(#ground)"/>
+  <!-- string lights -->
+  <path d="M0 40 Q150 95 300 45 T600 50 T900 45 T1200 55" fill="none" stroke="#3b2a1a" stroke-width="2"/>
+  <g fill="#ffe27a"><circle cx="60" cy="62" r="6"/><circle cx="150" cy="78" r="6"/><circle cx="240" cy="66" r="6"/><circle cx="330" cy="52" r="6"/><circle cx="420" cy="58" r="6"/><circle cx="510" cy="66" r="6"/><circle cx="600" cy="52" r="6"/><circle cx="690" cy="58" r="6"/><circle cx="780" cy="64" r="6"/><circle cx="870" cy="52" r="6"/><circle cx="960" cy="58" r="6"/><circle cx="1050" cy="66" r="6"/><circle cx="1140" cy="60" r="6"/></g>
+  <!-- stall 1 -->
+  <g><rect x="40" y="250" width="8" height="160" fill="#5a3f26"/><rect x="262" y="250" width="8" height="160" fill="#5a3f26"/>
+  <path d="M25 250 L285 250 L265 195 L45 195Z" fill="url(#stripeG)"/><path d="M25 250 Q60 272 95 250 T165 250 T235 250 T285 250" fill="#1f9b5b"/>
+  <rect x="48" y="340" width="214" height="70" rx="6" fill="#8b633b"/><rect x="48" y="340" width="214" height="12" fill="#a67a49"/>
+  <g><circle cx="90" cy="328" r="16" fill="#d9442f"/><circle cx="122" cy="332" r="15" fill="#e8622d"/><circle cx="154" cy="328" r="16" fill="#f1b72f"/><circle cx="186" cy="332" r="15" fill="#6fb53a"/><circle cx="218" cy="328" r="16" fill="#d9442f"/></g>
+  <g fill="#fff" opacity=".9"><rect x="60" y="270" width="26" height="34" rx="4" fill="#2b6fc4"/><rect x="96" y="268" width="26" height="40" rx="4" fill="#e9852b"/><rect x="132" y="272" width="26" height="32" rx="4" fill="#9b4fc4"/></g></g>
+  <!-- stall 2 -->
+  <g><rect x="340" y="260" width="8" height="150" fill="#5a3f26"/><rect x="570" y="260" width="8" height="150" fill="#5a3f26"/>
+  <path d="M322 260 L592 260 L570 200 L342 200Z" fill="url(#stripeA)"/><path d="M322 260 Q358 282 394 260 T466 260 T538 260 T592 260" fill="#e9852b"/>
+  <rect x="348" y="345" width="222" height="65" rx="6" fill="#7d5a36"/><rect x="348" y="345" width="222" height="12" fill="#9a7345"/>
+  <g><rect x="372" y="300" width="46" height="42" rx="5" fill="#1f9b5b"/><rect x="428" y="306" width="46" height="36" rx="5" fill="#f4efe0"/><rect x="484" y="296" width="46" height="46" rx="5" fill="#2b6fc4"/></g>
+  <g stroke="#3b2a1a" stroke-width="2"><line x1="380" y1="262" x2="380" y2="286"/><line x1="440" y1="262" x2="440" y2="290"/><line x1="500" y1="262" x2="500" y2="284"/></g><rect x="366" y="284" width="28" height="22" rx="3" fill="#d9442f"/><rect x="426" y="288" width="28" height="22" rx="3" fill="#f1b72f"/><rect x="486" y="282" width="28" height="22" rx="3" fill="#9b4fc4"/></g>
+  <!-- stall 3 -->
+  <g><rect x="640" y="250" width="8" height="160" fill="#5a3f26"/><rect x="870" y="250" width="8" height="160" fill="#5a3f26"/>
+  <path d="M622 250 L892 250 L870 192 L644 192Z" fill="url(#stripeB)"/><path d="M622 250 Q658 272 694 250 T766 250 T838 250 T892 250" fill="#2b6fc4"/>
+  <rect x="648" y="340" width="222" height="70" rx="6" fill="#8b633b"/><rect x="648" y="340" width="222" height="12" fill="#a67a49"/>
+  <g><rect x="676" y="296" width="50" height="44" rx="6" fill="#f4efe0"/><rect x="738" y="304" width="44" height="36" rx="6" fill="#d9442f"/><rect x="794" y="298" width="50" height="42" rx="6" fill="#1f9b5b"/></g>
+  <circle cx="700" cy="270" r="14" fill="#2f2f2f"/><rect x="690" y="262" width="20" height="26" rx="3" fill="#444"/></g>
+  <!-- stall 4 -->
+  <g><rect x="940" y="270" width="8" height="140" fill="#5a3f26"/><rect x="1150" y="270" width="8" height="140" fill="#5a3f26"/>
+  <path d="M922 270 L1168 270 L1148 214 L942 214Z" fill="url(#stripeG)"/><path d="M922 270 Q955 290 988 270 T1054 270 T1120 270 T1168 270" fill="#1f9b5b"/>
+  <rect x="948" y="350" width="202" height="60" rx="6" fill="#7d5a36"/><rect x="948" y="350" width="202" height="12" fill="#9a7345"/>
+  <g><circle cx="990" cy="338" r="15" fill="#f1b72f"/><circle cx="1022" cy="340" r="14" fill="#6fb53a"/><circle cx="1054" cy="338" r="15" fill="#d9442f"/><circle cx="1086" cy="340" r="14" fill="#f1b72f"/><circle cx="1118" cy="338" r="15" fill="#6fb53a"/></g></g>
+  <!-- bunting -->
+  <g opacity=".95"><path d="M0 112 Q300 165 600 118 T1200 120" fill="none" stroke="#3b2a1a" stroke-width="1.5"/>
+  <g fill="#e9852b"><path d="M90 132l16 0-8 20z"/><path d="M330 136l16 0-8 20z"/><path d="M570 120l16 0-8 20z"/><path d="M810 128l16 0-8 20z"/><path d="M1050 120l16 0-8 20z"/></g>
+  <g fill="#1f9b5b"><path d="M170 140l16 0-8 20z"/><path d="M410 133l16 0-8 20z"/><path d="M650 122l16 0-8 20z"/><path d="M890 124l16 0-8 20z"/><path d="M1130 120l16 0-8 20z"/></g>
+  <g fill="#f1d34a"><path d="M250 142l16 0-8 20z"/><path d="M490 128l16 0-8 20z"/><path d="M730 124l16 0-8 20z"/><path d="M970 122l16 0-8 20z"/></g></g>
+</svg>

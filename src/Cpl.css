@@ -1,0 +1,36 @@
+.cpl-wrap{max-width:760px;margin:0 auto;padding:4px 0 32px;color:var(--cpl-text,#12251a)}
+.cpl-hero{display:flex;align-items:center;gap:14px;padding:18px;border-radius:16px;background:linear-gradient(135deg,#0b6b3a,#13904f);color:#fff}
+.cpl-hero h1{margin:2px 0;font-size:1.5rem}.cpl-hero p{margin:0;opacity:.9}
+.cpl-kicker{font-size:.7rem;letter-spacing:.08em;opacity:.85}
+.cpl-mark{width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;flex:none}
+.cpl-refresh{margin-left:auto;background:rgba(255,255,255,.18);border:0;color:#fff;width:36px;height:36px;border-radius:10px;cursor:pointer}
+.cpl-spin{animation:cpl-rot 1s linear infinite}@keyframes cpl-rot{to{transform:rotate(360deg)}}
+.cpl-notice{margin:12px 0;padding:10px 14px;border-radius:10px;background:#fff6dd;border:1px solid #f0d98a;color:#5a4500;cursor:pointer}
+.cpl-tabs{display:flex;gap:6px;margin:14px 0;flex-wrap:wrap}
+.cpl-tabs button,.cpl-league button{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:1px solid #cfe3d6;background:#fff;cursor:pointer;font:inherit;color:inherit}
+.cpl-tabs button.on,.cpl-league button.on{background:#0b6b3a;border-color:#0b6b3a;color:#fff}
+.cpl-league{display:flex;gap:6px;margin-bottom:12px}
+.cpl-panel{background:#fff;border:1px solid #dcebe2;border-radius:14px;padding:16px;margin-top:12px}
+.cpl-panel h3{display:flex;align-items:center;gap:6px;margin:18px 0 8px;font-size:1rem}.cpl-panel h3:first-child{margin-top:0}
+.cpl-team{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eef4f0}.cpl-team:last-child{border-bottom:0}
+.cpl-team-main{display:flex;align-items:center;gap:12px;flex:1;text-align:left;background:none;border:0;padding:0;cursor:pointer;font:inherit;color:inherit}
+.cpl-team-main.static{cursor:default}
+.cpl-team-main strong{display:block}.cpl-team-main small,.cpl-teamhead small{color:#587264}
+.cpl-badge{width:40px;height:40px;border-radius:50%;background:#e4f3ea;color:#0b6b3a;display:grid;place-items:center;font-weight:700;font-size:.85rem;flex:none}
+.cpl-badge.big{width:56px;height:56px;font-size:1.1rem}
+.cpl-teamhead{display:flex;align-items:center;gap:14px}.cpl-teamhead h2{margin:0}
+.cpl-follow{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;border:1px solid #0b6b3a;background:#fff;color:#0b6b3a;cursor:pointer;font:inherit;font-size:.85rem;white-space:nowrap}
+.cpl-follow.on{background:#0b6b3a;color:#fff}.cpl-follow.danger{border-color:#b3261e;color:#b3261e}
+.cpl-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;border:0;background:#0b6b3a;color:#fff;cursor:pointer;font:inherit}
+.cpl-btn.ghost{background:#fff;color:#0b6b3a;border:1px solid #0b6b3a}.cpl-btn.cta{margin-bottom:12px}.cpl-btn:disabled{opacity:.5;cursor:not-allowed}
+.cpl-back{display:inline-flex;align-items:center;gap:4px;background:none;border:0;color:#0b6b3a;cursor:pointer;font:inherit;padding:0 0 10px}
+.cpl-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.cpl-form{display:grid;gap:8px}.cpl-form input,.cpl-form select{padding:10px 12px;border:1px solid #cfe3d6;border-radius:10px;font:inherit}
+.cpl-pref{display:flex;align-items:center;gap:10px;padding:8px 0}
+.cpl-empty,.cpl-soon{color:#587264;font-size:.9rem}.cpl-soon{margin-top:14px}
+@media (prefers-color-scheme:dark){
+ .cpl-wrap{--cpl-text:#e8f2ec}.cpl-panel{background:#14201a;border-color:#233a2d}
+ .cpl-tabs button,.cpl-league button,.cpl-follow,.cpl-btn.ghost{background:#14201a;border-color:#2c4a39}
+ .cpl-team{border-color:#233a2d}.cpl-badge{background:#1d3a2a;color:#7fe0aa}.cpl-form input,.cpl-form select{background:#0f1813;border-color:#2c4a39;color:inherit}
+ .cpl-team-main small,.cpl-teamhead small,.cpl-empty,.cpl-soon{color:#9bb8a8}.cpl-back{color:#7fe0aa}
+}

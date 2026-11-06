@@ -606,3 +606,37 @@ button:focus-visible, a:focus-visible { outline: 3px solid #8bb99a; outline-offs
 .hostel-community-link .onepage-community-copy small{color:#e3f1eb}
 .hostel-community-link>.service-icon{background:#ffffffe6}
 .hostel-community-link>svg:last-child{color:#fff}
+
+/* Chuka Soko landing tile: market-scene background with a dark green overlay for legibility */
+.onepage-community-card.soko-community-link{position:relative;overflow:hidden;color:#fff;border-color:#14452f;background-color:#14452f;background-image:linear-gradient(100deg,#0a2b1cf2 0%,#14452fd0 55%,#14452f8a 100%),var(--soko-bg,none);background-size:cover,cover;background-position:center,center;background-repeat:no-repeat}
+.onepage-community-card.soko-community-link:hover{border-color:#25d366}
+.soko-community-link .onepage-community-copy strong{color:#fff;text-shadow:0 1px 4px #00000066}
+.soko-community-link .onepage-community-copy small{color:#e3f4ea}
+.soko-community-link>.service-icon{background:#ffffffe6}
+.soko-community-link>svg:last-child{color:#fff}
+
+.onepage-community-card.study-community-link{position:relative;overflow:hidden;color:#fff;border-color:#0b3d2e;background-color:#0b3d2e;background-image:linear-gradient(100deg,#082d20f2 0%,#0b3d2ed0 55%,#0b3d2e90 100%),var(--study-bg,none);background-size:cover,cover;background-position:center,center;background-repeat:no-repeat}
+.onepage-community-card.study-community-link:hover{border-color:#25d366}
+.study-community-link .onepage-community-copy strong{color:#fff;text-shadow:0 1px 4px #00000066}
+.study-community-link .onepage-community-copy small{color:#e3f1eb}
+.study-community-link>.service-icon{background:#ffffffe6}
+.study-community-link>svg:last-child{color:#fff}
+
+.onepage-community-card.game-community-link{position:relative;overflow:hidden;color:#fff;border-color:#0f3a28;background-color:#0f3a28;background-image:linear-gradient(100deg,#0a2418f2 0%,#0f3a28d6 60%,#0f3a28a0 100%)}
+.onepage-community-card.game-community-link:hover{border-color:#25d366}
+.game-community-link::before{content:"";position:absolute;inset:0;background:var(--game-logo,none) right 16px center/auto 120% no-repeat;opacity:.5;pointer-events:none}
+.efootball-community-link.game-community-link::before{filter:brightness(0) invert(1);opacity:.2}
+.game-community-link>*{position:relative;z-index:1}
+.game-community-link .onepage-community-copy strong{color:#fff;text-shadow:0 1px 4px #00000066}
+.game-community-link .onepage-community-copy small{color:#e3f1eb}
+.game-community-link>svg:last-child{color:#fff}
+
+.onepage-community-card.themed-community-link{position:relative;overflow:hidden;color:#fff;border-color:var(--tc,#0b3d2e);background-color:var(--tc,#0b3d2e);background-image:linear-gradient(100deg,var(--tc-a,#082d20f2) 0%,var(--tc-b,#0b3d2ed0) 55%,var(--tc-c,#0b3d2e90) 100%),var(--theme-bg,none);background-size:cover,cover;background-position:center,center;background-repeat:no-repeat}
+.onepage-community-card.themed-community-link:hover{border-color:#25d366}
+.campus-community-link{--tc:#0b3d3a;--tc-a:#072a28f2;--tc-b:#0b3d3ad0;--tc-c:#0b3d3a8a}
+.ozone-community-link{--tc:#2a2150;--tc-a:#1b1438f2;--tc-b:#2a2150d0;--tc-c:#2a21508a}
+.premier-community-link{--tc:#123b1f;--tc-a:#0a2614f2;--tc-b:#123b1fd0;--tc-c:#123b1f8a}
+.themed-community-link .onepage-community-copy strong{color:#fff;text-shadow:0 1px 4px #00000066}
+.themed-community-link .onepage-community-copy small{color:#e8eef0}
+.themed-community-link>.service-icon{background:#ffffffe6}
+.themed-community-link>svg:last-child{color:#fff}

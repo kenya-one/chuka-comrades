@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import {
   onAuthStateChanged,
   signInWithPopup,
@@ -18,7 +18,8 @@ import {
   BriefcaseBusiness,
   Wallet,
   Download,
-  Palette,
+  Printer,
+  Banknote,
   MessageCircle,
   ShoppingBag,
   Trophy,
@@ -26,146 +27,72 @@ import {
   Clock3,
   RefreshCw,
   MapPin,
-  Sparkles,
 } from "lucide-react";
 import { auth, googleProvider } from "./lib/firebase";
 import { supabase } from "./lib/supabase";
 import StudyLabs from "./StudyLabs";
+import CampusUpdates from "./CampusUpdates";
+import { campusApi } from "./lib/campusApi";
 import Efootball from "./Efootball";
+import Pool from "./Pool";
+import { PoolLogo } from "./games/logos";
 import OZone from "./OZone";
 import HostelSection from "./HostelSection";
 import ChukaSoko from "./ChukaSoko";
 import "./App.css";
 
-const governmentServices = [
-  {
-    title: "eCitizen Kenya",
-    description: "Access participating national government services, applications and payments online.",
-    icon: Landmark,
-    label: "National services",
-    url: "https://www.ecitizen.go.ke/",
-  },
-  {
-    title: "Huduma Kenya",
-    description: "Find information about public services and Huduma service centres.",
-    icon: FileText,
-    label: "Public service help",
-    url: "https://www.hudumakenya.go.ke/",
-  },
-  {
-    title: "KRA iTax",
-    description: "Open the Kenya Revenue Authority tax portal for available tax services.",
-    icon: Wallet,
-    label: "Tax services",
-    url: "https://itax.kra.go.ke/",
-  },
-  {
-    title: "HELB",
-    description: "Visit the Higher Education Loans Board portal for student financing information and services.",
-    icon: GraduationCap,
-    label: "Student financing",
-    url: "https://www.helb.co.ke/",
-  },
-  {
-    title: "NSSF Kenya",
-    description: "Access official information and online services from the National Social Security Fund.",
-    icon: BriefcaseBusiness,
-    label: "Social security",
-    url: "https://www.nssf.or.ke/",
-  },
-  {
-    title: "Chuka / Tharaka-Nithi County",
-    description: "Find county government information, announcements and service updates.",
-    icon: Landmark,
-    label: "County information",
-    url: "https://tharakanithi.go.ke/",
-  },
+const ADMIN_WHATSAPP = "254180752220";
+const waHref = (message: string) => `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
+const fill = (intro: string, fields: string[]) => `Hello Chuka Comrades admin, ${intro}\n\n${fields.map((f) => `${f}: `).join("\n")}`;
+
+type ServiceCard = {
+  title: string;
+  description: string;
+  icon: typeof Landmark;
+  label: string;
+  mode: "link" | "whatsapp";
+  url?: string;
+  action: string;
+  waMessage?: string;
+};
+
+// Opened directly: the student does these themselves on the official site.
+const linkServices: ServiceCard[] = [
+  { title: "Student Portal — Direct Login", description: "Sign in with your registration number and password to access your student account and available academic services.", icon: GraduationCap, label: "Student account", mode: "link", url: "https://portal.chuka.ac.ke/", action: "Open student login" },
+  { title: "E-Learning / Moodle", description: "Open the university e-learning system to access online course materials and learning activities.", icon: BookOpen, label: "Online classes", mode: "link", url: "https://dos.chuka.ac.ke/", action: "Open e-learning" },
+  { title: "University Library", description: "Find library services, digital resources, e-books, e-journals and research support.", icon: BookOpen, label: "Library & research", mode: "link", url: "https://library.chuka.ac.ke/", action: "Open library" },
+  { title: "Current Student Resources", description: "Find student forms, handbooks, clearance links, portal guidance and other official student resources.", icon: ClipboardList, label: "Forms & resources", mode: "link", url: "https://www.chuka.ac.ke/current-students/", action: "View student resources" },
+  { title: "Student Welfare & Dean of Students", description: "Access student welfare information, support services, campus life updates and student assistance contacts.", icon: Users, label: "Student support", mode: "link", url: "https://studentswelfare.chuka.ac.ke/", action: "Open student welfare" },
+  { title: "Student Support & Counselling", description: "Visit the student support website for welfare information and available counselling support.", icon: MessageCircle, label: "Wellbeing support", mode: "link", url: "https://students.chuka.ac.ke/", action: "Get student support" },
+  { title: "University Announcements", description: "Visit the official university website for notices, academic updates, events and announcements.", icon: BellRing, label: "Official updates", mode: "link", url: "https://www.chuka.ac.ke/", action: "Visit university website" },
+  { title: "Chuka / Tharaka-Nithi County", description: "Find county government information, announcements and service updates.", icon: Landmark, label: "County information", mode: "link", url: "https://tharakanithi.go.ke/", action: "Open county website" },
 ];
 
-const schoolServices = [
-  {
-    title: "Student Portal — Direct Login",
-    description: "Sign in with your registration number and password to access your student account and available academic services.",
-    icon: GraduationCap,
-    label: "Student account",
-    url: "https://portal.chuka.ac.ke/",
-    action: "Open student login",
-  },
-  {
-    title: "E-Learning / Moodle",
-    description: "Open the university e-learning system to access online course materials and learning activities.",
-    icon: BookOpen,
-    label: "Online classes",
-    url: "https://dos.chuka.ac.ke/",
-    action: "Open e-learning",
-  },
-  {
-    title: "University Library",
-    description: "Find library services, digital resources, e-books, e-journals and research support.",
-    icon: BookOpen,
-    label: "Library & research",
-    url: "https://library.chuka.ac.ke/",
-    action: "Open library",
-  },
-  {
-    title: "Current Student Resources",
-    description: "Find student forms, handbooks, clearance links, portal guidance and other official student resources.",
-    icon: ClipboardList,
-    label: "Forms & resources",
-    url: "https://www.chuka.ac.ke/current-students/",
-    action: "View student resources",
-  },
-  {
-    title: "Student Welfare & Dean of Students",
-    description: "Access student welfare information, support services, campus life updates and student assistance contacts.",
-    icon: Users,
-    label: "Student support",
-    url: "https://studentswelfare.chuka.ac.ke/",
-    action: "Open student welfare",
-  },
-  {
-    title: "Student Support & Counselling",
-    description: "Visit the student support website for welfare information and available counselling support.",
-    icon: MessageCircle,
-    label: "Wellbeing support",
-    url: "https://students.chuka.ac.ke/",
-    action: "Get student support",
-  },
-  {
-    title: "University Announcements",
-    description: "Visit the official university website for notices, academic updates, events and announcements.",
-    icon: BellRing,
-    label: "Official updates",
-    url: "https://www.chuka.ac.ke/",
-    action: "Visit university website",
-  },
+// Handled entirely in WhatsApp with the admin: the button opens a pre-filled message.
+const applicationServices: ServiceCard[] = [
+  { title: "eCitizen Applications", description: "Help with national government applications such as ID, passport, birth certificate and good conduct.", icon: Landmark, label: "National services", mode: "whatsapp", action: "Apply on WhatsApp",
+    waMessage: fill("I need help with an eCitizen application.", ["Service (ID / passport / birth certificate / good conduct / other)", "Full name", "ID number"]) },
+  { title: "KRA iTax", description: "PIN registration, PIN retrieval and filing of tax returns.", icon: Wallet, label: "Tax services", mode: "whatsapp", action: "Apply on WhatsApp",
+    waMessage: fill("I need help with KRA iTax.", ["Service (PIN registration / PIN retrieval / file returns)", "Full name", "ID number"]) },
+  { title: "HELB", description: "New loan application, subsequent loan application and appeals.", icon: GraduationCap, label: "Student financing", mode: "whatsapp", action: "Apply on WhatsApp",
+    waMessage: fill("I need help with HELB.", ["Service (new loan / subsequent loan / appeal)", "Full name", "Registration number"]) },
+  { title: "NSSF", description: "Member registration, statements and updates.", icon: BriefcaseBusiness, label: "Social security", mode: "whatsapp", action: "Apply on WhatsApp",
+    waMessage: fill("I need help with NSSF.", ["Service (registration / statement / update)", "Full name", "ID number"]) },
+  { title: "Huduma Kenya", description: "Guidance on public services and Huduma service centres.", icon: FileText, label: "Public service help", mode: "whatsapp", action: "Ask on WhatsApp",
+    waMessage: fill("I need help with a Huduma Kenya service.", ["Service needed", "Full name"]) },
 ];
 
-const digitalProducts = [
-  {
-    title: "Study Notes & Revision Packs",
-    description: "Student-created summaries, revision guides and learning resources for faster study.",
-    icon: GraduationCap,
-    tag: "For students",
-  },
-  {
-    title: "CVs, Applications & Templates",
-    description: "Editable CV layouts, attachment trackers, business templates and application checklists.",
-    icon: FileText,
-    tag: "Career tools",
-  },
-  {
-    title: "Designs & Social Media Kits",
-    description: "Posters, event flyers, business cards and ready-to-customise social media designs.",
-    icon: Palette,
-    tag: "Creative assets",
-  },
-  {
-    title: "Digital Skills & Guides",
-    description: "Practical e-books and step-by-step guides made for campus projects and small businesses.",
-    icon: Download,
-    tag: "Learn & build",
-  },
+const extraServices: ServiceCard[] = [
+  { title: "Cyber & Printing", description: "Printing, photocopying, scanning, lamination, binding, typing and passport photos. Send your file in the chat.", icon: Printer, label: "Cyber services", mode: "whatsapp", action: "Order on WhatsApp",
+    waMessage: fill("I need cyber / printing help.", ["Service (print / copy / scan / typing / passport photos / lamination / binding)", "Number of pages", "Colour or black & white", "Pick-up or delivery"]) },
+  { title: "Fee Transfer", description: "Get help paying university fees and other fees. Share the details in the chat.", icon: Banknote, label: "Payments", mode: "whatsapp", action: "Request on WhatsApp",
+    waMessage: fill("I need help with a fee transfer.", ["Type (university fees / other)", "Registration number", "Amount (KSh)", "Payment code or reference"]) },
+];
+
+const serviceGroups: { kicker: string; title: string; note?: string; items: ServiceCard[] }[] = [
+  { kicker: "OPEN ONLINE", title: "University portals & resources", items: linkServices },
+  { kicker: "APPLY VIA WHATSAPP", title: "Government services", note: "Applications are handled in WhatsApp with the admin. Never send your passwords or PINs in chat.", items: applicationServices },
+  { kicker: "ALSO ON WHATSAPP", title: "Cyber & fee services", items: extraServices },
 ];
 
 type LandingFeedItem = {
@@ -181,13 +108,14 @@ type LandingFeedItem = {
 };
 
 const feedSections = [
-  { key: "marketplace", title: "Chuka Soko", subtitle: "Latest student listings", icon: ShoppingBag },
-  { key: "hostels", title: "Hostels & Roommates", subtitle: "New accommodation posts", icon: House },
-  { key: "events", title: "Campus Updates & Events", subtitle: "What's happening around campus", icon: BellRing },
-  { key: "sports", title: "Chuka Premier League", subtitle: "Latest football updates", icon: Trophy },
-  { key: "discussions", title: "Chuka O Zone", subtitle: "Fresh community conversations", icon: MessageCircle },
-  { key: "digital_products", title: "Digital Products", subtitle: "Recently added downloads", icon: Download },
-  { key: "opportunities", title: "Opportunities", subtitle: "Jobs, attachments & scholarships", icon: BriefcaseBusiness },
+  { key: "campus_updates", openLabel: "Open Campus Updates", title: "Campus Updates", subtitle: "Official announcements, events & opportunities", icon: BellRing },
+  { key: "marketplace", openLabel: "Open Chuka Soko", title: "Chuka Soko", subtitle: "Latest student listings", icon: ShoppingBag },
+  { key: "hostels", openLabel: "Open Hostels & Roommates", title: "Hostels & Roommates", subtitle: "New accommodation posts", icon: House },
+  { key: "events", openLabel: "See campus events", title: "Campus Updates & Events", subtitle: "What's happening around campus", icon: BellRing },
+  { key: "sports", openLabel: "See sports updates", title: "Chuka Premier League", subtitle: "Latest football updates", icon: Trophy },
+  { key: "discussions", openLabel: "Open Chuka O Zone", title: "Chuka O Zone", subtitle: "Fresh community conversations", icon: MessageCircle },
+  { key: "digital_products", openLabel: "Open Project Hub", title: "Digital Products", subtitle: "Recently added downloads", icon: Download },
+  { key: "opportunities", openLabel: "See opportunities", title: "Opportunities", subtitle: "Jobs, attachments & scholarships", icon: BriefcaseBusiness },
 ];
 
 function timeAgo(value: string) {
@@ -202,66 +130,82 @@ function timeAgo(value: string) {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-function LiveCampusFeed() {
+const SYNC_URL = import.meta.env.VITE_SUPABASE_URL ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/landing-feed-sync` : "";
+/** Asks the server to refresh landing_feed from Soko, Hostels, O Zone and Study Labs. It is throttled server-side (every 5 minutes). */
+async function syncLandingFeed(): Promise<boolean> {
+  if (!SYNC_URL) return false;
+  try {
+    const res = await fetch(SYNC_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const data = await res.json().catch(() => ({}));
+    return res.ok && data.synced === true;
+  } catch { return false; }
+}
+
+const updateSection: Record<string, string> = { events: "events", opportunities: "opportunities", sports: "sports" };
+
+function LiveCampusFeed({ onOpenSection }: { onOpenSection: (sectionKey: string) => void }) {
   const [items, setItems] = useState<LandingFeedItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  useEffect(() => {
+  const loadFeed = useCallback(async () => {
     const client = supabase;
-    if (!client) {
-      setFeedLoading(false);
-      return;
-    }
+    // Real Campus Updates posts (published by the admin) and the moderated landing_feed table.
+    const [updatesResult, feedResult] = await Promise.allSettled([
+      campusApi<{ updates: Array<{ id: string; title: string; body: string; category?: string; published_at: string | null; created_at: string; media?: Array<{ kind: string; url: string | null }> }> }>(null, "updates_list"),
+      client
+        ? client.from("landing_feed").select("id, section, title, description, image_url, price, location, link_url, created_at").eq("is_published", true).order("created_at", { ascending: false }).limit(70)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
 
-    let active = true;
-    const loadFeed = async () => {
-      const { data, error: queryError } = await client
-        .from("landing_feed")
-        .select("id, section, title, description, image_url, price, location, link_url, created_at")
-        .eq("is_published", true)
-        .order("created_at", { ascending: false })
-        .limit(70);
-      if (!active) return;
-      if (queryError) {
-        setFeedError("Live updates are temporarily unavailable.");
-      } else {
-        setItems((data || []) as LandingFeedItem[]);
-        setFeedError("");
-        setLastUpdated(new Date());
+    const merged: LandingFeedItem[] = [];
+    let updatesOk = false;
+    let feedOk = false;
+    if (updatesResult.status === "fulfilled") {
+      updatesOk = true;
+      for (const u of updatesResult.value.updates || []) {
+        const image = (u.media || []).find((m) => m.kind === "image" && m.url);
+        merged.push({
+          id: `update-${u.id}`,
+          section: updateSection[u.category || ""] || "campus_updates",
+          title: u.title,
+          description: u.body.length > 160 ? `${u.body.slice(0, 160).trim()}…` : u.body,
+          image_url: image?.url ?? null,
+          price: null,
+          location: null,
+          link_url: null,
+          created_at: u.published_at || u.created_at,
+        });
       }
-      setFeedLoading(false);
-    };
-
-    void loadFeed();
-    const refreshTimer = window.setInterval(() => void loadFeed(), 60000);
-    const channel = client
-      .channel("landing-feed-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "landing_feed" }, () => void loadFeed())
-      .subscribe();
-
-    return () => {
-      active = false;
-      window.clearInterval(refreshTimer);
-      void client.removeChannel(channel);
-    };
+    }
+    if (feedResult.status === "fulfilled" && !feedResult.value.error) {
+      feedOk = true;
+      merged.push(...((feedResult.value.data || []) as LandingFeedItem[]));
+    }
+    merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setItems(merged);
+    if (updatesOk || feedOk) { setFeedError(""); setLastUpdated(new Date()); }
+    else setFeedError("Live updates are temporarily unavailable. Please try again shortly.");
+    setFeedLoading(false);
   }, []);
 
-  const refresh = async () => {
+  useEffect(() => {
     const client = supabase;
-    if (!client) return;
-    setFeedLoading(true);
-    const { data, error: queryError } = await client
-      .from("landing_feed")
-      .select("id, section, title, description, image_url, price, location, link_url, created_at")
-      .eq("is_published", true)
-      .order("created_at", { ascending: false })
-      .limit(70);
-    if (queryError) setFeedError("Live updates are temporarily unavailable.");
-    else { setItems((data || []) as LandingFeedItem[]); setFeedError(""); setLastUpdated(new Date()); }
-    setFeedLoading(false);
-  };
+    void loadFeed();
+    // Refresh the shared feed from the live sources, then reload if anything changed.
+    void syncLandingFeed().then((ran) => { if (ran) void loadFeed(); });
+    const refreshTimer = window.setInterval(() => void loadFeed(), 60000);
+    const channel = client
+      ? client.channel("landing-feed-live").on("postgres_changes", { event: "*", schema: "public", table: "landing_feed" }, () => void loadFeed()).subscribe()
+      : null;
+    return () => {
+      window.clearInterval(refreshTimer);
+      if (client && channel) void client.removeChannel(channel);
+    };
+  }, [loadFeed]);
+
+  const refresh = async () => { setFeedLoading(true); await syncLandingFeed(); await loadFeed(); };
 
   return (
     <section className="live-campus-section" id="campus-live">
@@ -273,13 +217,12 @@ function LiveCampusFeed() {
         </div>
         <div className="live-status-wrap">
           <span className="live-status"><span className="live-dot" /> LIVE UPDATES</span>
-          <button className="feed-refresh" onClick={refresh} disabled={!supabase || feedLoading} aria-label="Refresh campus updates">
+          <button className="feed-refresh" onClick={refresh} disabled={feedLoading} aria-label="Refresh campus updates">
             <RefreshCw size={15} className={feedLoading ? "refresh-spinning" : ""} /> Refresh
           </button>
           {lastUpdated && <small>Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small>}
         </div>
       </div>
-      {!supabase && <div className="feed-setup-note"><Sparkles size={17} /> Connect Supabase and publish approved posts to make these sections update with real campus activity.</div>}
       {feedError && <p className="feed-error" role="status">{feedError}</p>}
       <div className="live-feed-grid">
         {feedSections.map((section) => {
@@ -315,6 +258,7 @@ function LiveCampusFeed() {
                   {feedLoading ? "Checking for new posts…" : "New posts will appear here as students share updates."}
                 </div>
               )}
+              <button className="feed-open-updates" onClick={() => onOpenSection(section.key)}>{section.openLabel} <ArrowUpRight size={13} /></button>
             </article>
           );
         })}
@@ -341,8 +285,10 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [showStudyLabs, setShowStudyLabs] = useState(false);
+  const [studyLabsTab, setStudyLabsTab] = useState<"Resources" | "Products">("Resources");
+  const openStudyLabs = (tab: "Resources" | "Products") => { setStudyLabsTab(tab); setShowStudyLabs(true); };
   const [activeView, setActiveView] = useState("home");
-  const [activeCommunity, setActiveCommunity] = useState<string | null>(null);
+  const [activeCommunity, setActiveCommunity] = useState<string | null>(() => /^#\/efootball\//.test(window.location.hash) ? "Chuka Efootball" : /^#\/pool\//.test(window.location.hash) ? "Chuka Pool" : /^#\/soko\//.test(window.location.hash) ? "Chuka Soko" : null);
 
   useEffect(() => {
     // Keep the branded welcome screen visible long enough to be noticed,
@@ -437,7 +383,7 @@ function App() {
   }
 
   if (showStudyLabs) {
-    return <StudyLabs user={user} onBack={() => setShowStudyLabs(false)} onSignIn={handleGoogleSignIn} />;
+    return <StudyLabs key={studyLabsTab} initialTab={studyLabsTab} user={user} onBack={() => setShowStudyLabs(false)} onSignIn={handleGoogleSignIn} />;
   }
 
   const communities = [
@@ -448,6 +394,7 @@ function App() {
     { title: "Chuka O Zone", subtitle: "Campus conversations and student life", icon: MessageCircle },
     { title: "Chuka Premier League", subtitle: "Fixtures, results and campus football", icon: Trophy },
     { title: "Chuka Efootball", subtitle: "Find players, organise matches and tournaments", icon: Users },
+    { title: "Chuka Pool", subtitle: "Pool points, players and competitions", icon: Trophy },
   ];
 
   return (
@@ -465,7 +412,7 @@ function App() {
         </a>
         <nav className="onepage-nav" aria-label="Main navigation">
           {[{id:"home",label:"Home"},{id:"updates",label:"What's new"},{id:"services",label:"Student services"},{id:"digital",label:"Digital products"}].map(item => (
-            <button key={item.id} className={activeView === item.id ? "active" : ""} onClick={() => { setActiveView(item.id); setActiveCommunity(null); }}>{item.label}</button>
+            <button key={item.id} className={activeView === item.id ? "active" : ""} onClick={() => { setActiveCommunity(null); if (item.id === "digital") openStudyLabs("Products"); else setActiveView(item.id); }}>{item.label}</button>
           ))}
         </nav>
         {user ? <button className="header-signin signed-in" onClick={handleSignOut} disabled={busy}>{busy ? "Please wait…" : "Sign out"}</button> : <button className="header-signin" onClick={handleGoogleSignIn} disabled={busy}>Sign in <ChevronRight size={16} /></button>}
@@ -482,16 +429,19 @@ function App() {
           </div>
           {error && <p className="error-message" role="alert">{error}</p>}
           <div className="onepage-section-title"><div><span className="section-kicker">EXPLORE YOUR COMMUNITY</span><h2>Choose your community</h2></div><span>7 campus spaces</span></div>
-          <div className="onepage-community-grid">{communities.map((community, index) => { const Icon = community.icon; return <button className={`onepage-community-card${community.title === "Chuka Efootball" ? " efootball-community-link" : ""}${community.title === "Hostels & Roommates" ? " hostel-community-link" : ""}`} style={community.title === "Hostels & Roommates" ? ({ "--hostel-bg": `url(${import.meta.env.BASE_URL}hostel-bg.jpeg)` } as CSSProperties) : undefined} key={community.title} onClick={() => community.title === "Study Labs" ? setShowStudyLabs(true) : setActiveCommunity(community.title)}>{community.title === "Chuka Efootball" ? <span className="efootball-logo-wrap"><img className="efootball-logo" src="https://upload.wikimedia.org/wikipedia/commons/e/ee/EFootball_logo.svg" alt="eFootball logo" /></span> : <span className={`service-icon service-icon-${(index % 6) + 1}`}><Icon size={21}/></span>}<span className="onepage-community-copy"><strong>{community.title}</strong><small>{community.subtitle}</small></span><ChevronRight size={18}/></button>; })}</div>
-          <div className="onepage-bottom-row"><div className="onepage-pulse"><span className="section-kicker"><span className="live-dot"/> CAMPUS PULSE</span><strong>What's happening around Chuka?</strong><small>Latest listings, conversations, sports and opportunities.</small><button onClick={() => setActiveView("updates")}>View campus updates <ArrowUpRight size={14}/></button></div><div className="onepage-shortcuts"><span className="section-kicker">QUICK ACCESS</span><button onClick={() => setActiveView("services")}>University & government services <ArrowUpRight size={14}/></button><button onClick={() => setActiveView("digital")}>Digital products <ArrowUpRight size={14}/></button></div></div>
+          <div className="onepage-community-grid">{communities.map((community, index) => { const Icon = community.icon; return <button className={`onepage-community-card${community.title === "Chuka Efootball" ? " efootball-community-link game-community-link" : ""}${community.title === "Hostels & Roommates" ? " hostel-community-link" : ""}${community.title === "Chuka Soko" ? " soko-community-link" : ""}${community.title === "Study Labs" ? " study-community-link" : ""}${community.title === "Chuka Pool" ? " pool-community-link game-community-link" : ""}${community.title === "Campus Updates" ? " campus-community-link themed-community-link" : ""}${community.title === "Chuka O Zone" ? " ozone-community-link themed-community-link" : ""}${community.title === "Chuka Premier League" ? " premier-community-link themed-community-link" : ""}`} style={community.title === "Hostels & Roommates" ? ({ "--hostel-bg": `url(${import.meta.env.BASE_URL}hostel-bg.jpeg)` } as CSSProperties) : community.title === "Chuka Soko" ? ({ "--soko-bg": `url(${import.meta.env.BASE_URL}soko-bg.svg)` } as CSSProperties) : community.title === "Study Labs" ? ({ "--study-bg": `url(${import.meta.env.BASE_URL}study-labs-bg.svg)` } as CSSProperties) : community.title === "Chuka Efootball" ? ({ "--game-logo": `url(https://upload.wikimedia.org/wikipedia/commons/e/ee/EFootball_logo.svg)` } as CSSProperties) : community.title === "Chuka Pool" ? ({ "--game-logo": `url(${import.meta.env.BASE_URL}pool-bg.svg)` } as CSSProperties) : community.title === "Campus Updates" ? ({ "--theme-bg": `url(${import.meta.env.BASE_URL}campus-bg.svg)` } as CSSProperties) : community.title === "Chuka O Zone" ? ({ "--theme-bg": `url(${import.meta.env.BASE_URL}ozone-bg.svg)` } as CSSProperties) : community.title === "Chuka Premier League" ? ({ "--theme-bg": `url(${import.meta.env.BASE_URL}premier-bg.svg)` } as CSSProperties) : undefined} key={community.title} onClick={() => community.title === "Study Labs" ? openStudyLabs("Resources") : setActiveCommunity(community.title)}>{community.title === "Chuka Efootball" ? <span className="efootball-logo-wrap"><img className="efootball-logo" src="https://upload.wikimedia.org/wikipedia/commons/e/ee/EFootball_logo.svg" alt="eFootball logo" /></span> : community.title === "Chuka Pool" ? <span className="efootball-logo-wrap"><PoolLogo /></span> : <span className={`service-icon service-icon-${(index % 6) + 1}`}><Icon size={21}/></span>}<span className="onepage-community-copy"><strong>{community.title}</strong><small>{community.subtitle}</small></span><ChevronRight size={18}/></button>; })}</div>
+          <div className="onepage-bottom-row"><div className="onepage-pulse"><span className="section-kicker"><span className="live-dot"/> CAMPUS PULSE</span><strong>What's happening around Chuka?</strong><small>Latest listings, conversations, sports and opportunities.</small><button onClick={() => setActiveView("updates")}>View campus updates <ArrowUpRight size={14}/></button></div><div className="onepage-shortcuts"><span className="section-kicker">QUICK ACCESS</span><button onClick={() => setActiveView("services")}>University & government services <ArrowUpRight size={14}/></button><button onClick={() => openStudyLabs("Products")}>Digital products <ArrowUpRight size={14}/></button></div></div>
         </>}
 
-        {activeView === "home" && activeCommunity && <div className="onepage-detail"><button className="back-link" onClick={() => setActiveCommunity(null)}>← Back to communities</button>{activeCommunity === "Chuka Efootball" ? <Efootball user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Chuka O Zone" ? <OZone user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Hostels & Roommates" ? <HostelSection user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Chuka Soko" ? <ChukaSoko user={user} onSignIn={handleGoogleSignIn} onBack={() => setActiveCommunity(null)}/> : <><span className="section-kicker">CHUKA COMRADES COMMUNITY</span><h1>{activeCommunity}</h1><p>{communities.find(c => c.title === activeCommunity)?.subtitle}</p><div className="community-detail-card"><Users size={28}/><h2>Welcome to {activeCommunity}</h2><p>This community space is being prepared. Its posts, discussions and activities will appear here as features are connected.</p></div></>}</div>}
+        {activeView === "home" && activeCommunity && <div className="onepage-detail"><button className="back-link" onClick={() => setActiveCommunity(null)}>← Back to communities</button>{activeCommunity === "Chuka Efootball" ? <Efootball user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Chuka Pool" ? <Pool user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Campus Updates" ? <CampusUpdates user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Chuka O Zone" ? <OZone user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Hostels & Roommates" ? <HostelSection user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Chuka Soko" ? <ChukaSoko user={user} onSignIn={handleGoogleSignIn} onBack={() => setActiveCommunity(null)}/> : <><span className="section-kicker">CHUKA COMRADES COMMUNITY</span><h1>{activeCommunity}</h1><p>{communities.find(c => c.title === activeCommunity)?.subtitle}</p><div className="community-detail-card"><Users size={28}/><h2>Welcome to {activeCommunity}</h2><p>This community space is being prepared. Its posts, discussions and activities will appear here as features are connected.</p></div></>}</div>}
 
-        {activeView === "updates" && <div className="onepage-panel"><button className="back-link" onClick={() => setActiveView("home")}>← Home</button><LiveCampusFeed/></div>}
-        {activeView === "services" && <div className="onepage-panel"><button className="back-link" onClick={() => setActiveView("home")}>← Home</button><span className="section-kicker">QUICK ACCESS</span><h1>University & Government Services</h1><div className="onepage-link-grid">{[...schoolServices, ...governmentServices].map(service => { const Icon = service.icon; return <a key={service.title} href={service.url} target="_blank" rel="noreferrer"><Icon size={20}/><span><strong>{service.title}</strong><small>{service.description}</small></span><ArrowUpRight size={16}/></a>; })}</div></div>}
-        {activeView === "digital" && <div className="onepage-panel"><button className="back-link" onClick={() => setActiveView("home")}>← Home</button><span className="section-kicker">MADE, SHARED & SOLD DIGITALLY</span><h1>Chuka Digital Products</h1><div className="onepage-link-grid">{digitalProducts.map(product => { const Icon = product.icon; return <article key={product.title}><Icon size={20}/><span><strong>{product.title}</strong><small>{product.description}</small></span><small>Coming soon</small></article>; })}</div></div>}
-      </section>
+        {activeView === "updates" && <div className="onepage-panel"><button className="back-link" onClick={() => setActiveView("home")}>← Home</button><LiveCampusFeed onOpenSection={(key) => {
+            if (key === "digital_products") { openStudyLabs("Products"); return; }
+            const target: Record<string, string> = { marketplace: "Chuka Soko", hostels: "Hostels & Roommates", discussions: "Chuka O Zone" };
+            setActiveView("home"); setActiveCommunity(target[key] || "Campus Updates");
+          }}/></div>}
+        {activeView === "services" && <div className="onepage-panel"><button className="back-link" onClick={() => setActiveView("home")}>← Home</button><span className="section-kicker">QUICK ACCESS</span><h1>University & Government Services</h1><p className="services-intro">Open official portals directly, or chat with the Chuka Comrades admin on WhatsApp for applications, printing and fee payments.</p>{serviceGroups.map(group => <section className="service-group" key={group.title}><div className="service-group-head"><span className="section-kicker">{group.kicker}</span><h2>{group.title}</h2>{group.note && <p className="service-note">{group.note}</p>}</div><div className="onepage-link-grid">{group.items.map(service => { const Icon = service.icon; const isWa = service.mode === "whatsapp"; return <a key={service.title} className={isWa ? "service-card-wa" : undefined} href={isWa ? waHref(service.waMessage || "") : service.url} target="_blank" rel="noreferrer"><Icon size={20}/><span><strong>{service.title}</strong><small>{service.description}</small><em className="service-action">{isWa ? <MessageCircle size={12}/> : <ArrowUpRight size={12}/>} {service.action}</em></span></a>; })}</div></section>)}</div>}
+        </section>
       <footer className="onepage-footer"><span>© {new Date().getFullYear()} Chuka Comrades</span><span>Community-led, student-focused.</span></footer>
     </main>
   );

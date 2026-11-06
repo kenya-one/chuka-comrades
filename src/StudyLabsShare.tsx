@@ -80,7 +80,7 @@ export function ShareForm({ user, onClose, onDone }: ShareProps) {
       </div>
     </>}
     <label>{hub ? 'Main file (the product buyers receive)' : 'File'}<input name="file" type="file" required /></label>
-    <p className="sl-hint">PDF, Word, PowerPoint, Excel, TXT, PNG or JPG — up to 12 MB. Everything is checked by the admin before publishing. Only share work you own or have permission to share.</p>
+    <p className="sl-hint">PDF, Word, PowerPoint, Excel, TXT, PNG, JPG or ZIP — up to 12 MB. Everything is checked by the admin before publishing. Only share work you own or have permission to share.</p>
     <button className="sl-primary" disabled={busy}>{busy ? <><LoaderCircle className="sl-spin" size={17} /> Uploading…</> : 'Submit for review'}</button>
   </form>;
 }

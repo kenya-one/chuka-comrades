@@ -1,3 +1,11 @@
 [functions.chuka-soko-api]
 # This function verifies Firebase ID tokens itself; do not require Supabase JWTs at the gateway.
 verify_jwt = false
+
+[functions.campus-ozone-admin]
+# Verifies Firebase ID tokens itself (admin = verified CAMPUS_ADMIN_EMAIL); do not require Supabase JWTs at the gateway.
+verify_jwt = false
+
+[functions.landing-feed-sync]
+# Public, throttled, read-only copy of already-public data into landing_feed. No user tokens involved.
+verify_jwt = false

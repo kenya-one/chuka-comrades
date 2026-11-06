@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { ArrowLeft, ArrowUpRight, BookOpen, BriefcaseBusiness, CalendarDays, Download, ExternalLink, FileUp, Lightbulb, LoaderCircle, MessageCircle, Plus, Search, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { bootstrapStudyLabs, jsonp, listStudyItems, NOTES_COVER, openDownload, postStudyAction, str, type StudyItem } from './lib/studyLabs';
@@ -10,7 +10,7 @@ import { PartnerRequestDialog } from './StudyLabsPartners';
 import './StudyLabs.css';
 import './StudyLabsV2.css';
 
-type Props = { user: User | null; onBack: () => void; onSignIn: () => void };
+type Props = { user: User | null; onBack: () => void; onSignIn: () => void; initialTab?: 'Resources' | 'Products' };
 type ListTab = 'Resources' | 'Products' | 'StudyPartners' | 'Opportunities' | 'Events';
 type Tab = ListTab | 'WhatsApp' | 'MyUploads' | 'Admin';
 const tabs: { key: Tab; label: string; icon: typeof BookOpen }[] = [
@@ -25,8 +25,8 @@ const isListTab = (t: Tab): t is ListTab => ['Resources', 'Products', 'StudyPart
 const CHIPS: Partial<Record<ListTab, string[]>> = { Resources: ['All', 'Notes', 'Past paper', 'Revision guide'], Products: ['All', 'Project', 'Digital product', 'Template', 'Free'] };
 const EMPTY: Record<ListTab, string> = { Resources: 'No approved study materials yet.', Products: 'Nothing in the Project Hub yet.', StudyPartners: 'No study partner profiles are available yet.', Opportunities: 'No active opportunities at the moment.', Events: 'No upcoming learning events have been listed.' };
 
-export default function StudyLabs({ user, onBack, onSignIn }: Props) {
-  const [tab, setTab] = useState<Tab>('Resources');
+export default function StudyLabs({ user, onBack, onSignIn, initialTab = 'Resources' }: Props) {
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [items, setItems] = useState<StudyItem[]>([]);
   const [query, setQuery] = useState('');
   const [chip, setChip] = useState('All');
@@ -43,12 +43,14 @@ export default function StudyLabs({ user, onBack, onSignIn }: Props) {
   const [buying, setBuying] = useState<StudyItem | null>(null);
   const [requesting, setRequesting] = useState<StudyItem | null>(null);
 
+  const reqId = useRef(0);
   const load = useCallback(async (nextTab: Tab, q: string) => {
+    const my = ++reqId.current;
     if (!isListTab(nextTab)) { setLoading(false); return; }
     setLoading(true); setError('');
-    try { setItems(await listStudyItems(nextTab, q)); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not load Study Labs.'); }
-    finally { setLoading(false); }
+    try { const data = await listStudyItems(nextTab, q); if (my === reqId.current) setItems(data); }
+    catch (e) { if (my === reqId.current) setError(e instanceof Error ? e.message : 'Could not load Study Labs.'); }
+    finally { if (my === reqId.current) setLoading(false); }
   }, []);
 
   useEffect(() => {
@@ -58,11 +60,11 @@ export default function StudyLabs({ user, onBack, onSignIn }: Props) {
     }).catch((e) => setError(e instanceof Error ? e.message : 'Could not connect to Study Labs.'));
   }, []);
   useEffect(() => { setChip('All'); setShowSuggest(false); }, [tab]);
-  useEffect(() => { const timer = window.setTimeout(() => void load(tab, query), 250); return () => window.clearTimeout(timer); }, [tab, query, load]);
+  useEffect(() => { const timer = window.setTimeout(() => void load(tab, query), 450); return () => window.clearTimeout(timer); }, [tab, query, load]);
 
   const refreshOrders = useCallback(async () => {
     if (!user) { setOrders({}); return; }
-    try { const r = await postStudyAction(user, { action: 'myOrders' }); const map: Record<string, string> = {}; ((r.items as StudyItem[]) || []).forEach((o) => { const pid = str(o, 'product_id'); if (map[pid] !== 'verified') map[pid] = str(o, 'status'); }); setOrders(map); }
+    try { const r = await postStudyAction(user, { action: 'myOrders' }); const map: Record<string, string> = {}; ((r.items as StudyItem[]) || []).forEach((o) => { const pid = str(o, 'product_id'); const rank: Record<string, number> = { verified: 3, pending: 2, rejected: 1 }; const st = str(o, 'status'); if ((rank[st] || 0) > (rank[map[pid]] || 0)) map[pid] = st; }); setOrders(map); }
     catch { setOrders({}); }
   }, [user]);
   useEffect(() => {
@@ -146,7 +148,7 @@ export default function StudyLabs({ user, onBack, onSignIn }: Props) {
   </div> : null;
 
   return <main className="study-labs-page">
-    <header className="sl-topbar"><button className="sl-back" onClick={onBack}><ArrowLeft size={17} /> Chuka Comrades</button><span className="sl-brand"><img src="/chuka%20crest.jfif" alt="" /> STUDY LABS</span><span className="sl-user">{user ? user.displayName || user.email : <button onClick={onSignIn}>Sign in</button>}</span></header>
+    <header className="sl-topbar"><button className="sl-back" onClick={onBack}><ArrowLeft size={17} /> Chuka Comrades</button><span className="sl-brand"><img src={`${import.meta.env.BASE_URL}chuka%20crest.jfif`} alt="" /> STUDY LABS</span><span className="sl-user">{user ? user.displayName || user.email : <button onClick={onSignIn}>Sign in</button>}</span></header>
     <section className="sl-hero"><div className="sl-kicker">CHUKA COMRADES · ACADEMIC COMMUNITY</div><h1>Learn. Share. <span>Grow.</span></h1><p>Find learning materials, project resources, study partners and opportunities.</p>
       <div className="sl-search"><Search size={19} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes, units, projects, opportunities…" /></div>
       <div className="sl-actions"><button className="sl-primary" onClick={() => requireUser(() => setShowShare((v) => !v))}><FileUp size={17} /> Share</button>{info.communityUrl && <a className="sl-whatsapp" href={info.communityUrl} target="_blank" rel="noreferrer"><MessageCircle size={17} /> Join WhatsApp group <ArrowUpRight size={15} /></a>}</div></section>

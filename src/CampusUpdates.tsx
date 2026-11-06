@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { User } from "firebase/auth";
-import { Megaphone, Pin, Share2, Trash2, Undo2, Plus, Video, ImageIcon, X, Pencil } from "lucide-react";
-import { campusApi, uploadCampusMedia, waShare } from "./lib/campusApi";
+import { Megaphone, Pin, Share2, Trash2, Undo2, Plus, Video, ImageIcon, X, Pencil, Copy, Link as LinkIcon, CheckCircle2 } from "lucide-react";
+import { campusApi, fetchSettings, uploadCampusMedia, waShare, EMPTY_SETTINGS, type CampusSettings } from "./lib/campusApi";
 import "./CampusUpdates.css";
 
 type Media = { id: string; kind: "image" | "video"; url: string | null; caption: string | null };
@@ -10,16 +10,25 @@ type Update = {
   is_pinned: boolean; published_at: string | null; created_at: string; deleted_at?: string | null; media: Media[];
 };
 const CATEGORIES = ["general", "academic", "events", "notices", "opportunities", "security", "sports"];
-const CHANNEL = import.meta.env.VITE_CAMPUS_WHATSAPP_CHANNEL_URL as string | undefined;
+const ENV_CHANNEL = (import.meta.env.VITE_CAMPUS_WHATSAPP_CHANNEL_URL as string | undefined) || "";
 const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" }) : "");
+
+/** The text posted to the WhatsApp channel for an update. */
+const channelText = (u: { title: string; body: string }) =>
+  `📢 *${u.title}*\n\n${u.body.length > 700 ? `${u.body.slice(0, 700)}…` : u.body}\n\nMore on Chuka Comrades: ${window.location.origin}${window.location.pathname}`;
 
 export default function CampusUpdates({ user, onSignIn }: { user: User | null; onSignIn: () => void }) {
   const [items, setItems] = useState<Update[]>([]);
+  const [settings, setSettings] = useState<CampusSettings>(EMPTY_SETTINGS);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminMode, setAdminMode] = useState(false);
   const [editing, setEditing] = useState<Update | "new" | null>(null);
+  const [posted, setPosted] = useState<{ title: string; body: string } | null>(null);
   const [error, setError] = useState("");
+  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const channel = settings.updates_channel_url || ENV_CHANNEL;
 
   const load = useCallback(async (admin: boolean) => {
     setLoading(true); setError("");
@@ -29,6 +38,7 @@ export default function CampusUpdates({ user, onSignIn }: { user: User | null; o
     } catch (e) { setError((e as Error).message); } finally { setLoading(false); }
   }, [user]);
 
+  useEffect(() => { void fetchSettings().then(setSettings); }, []);
   useEffect(() => {
     setIsAdmin(false); setAdminMode(false);
     if (!user) return;
@@ -39,8 +49,11 @@ export default function CampusUpdates({ user, onSignIn }: { user: User | null; o
   const act = async (fn: () => Promise<unknown>) => {
     try { await fn(); await load(adminMode); } catch (e) { setError((e as Error).message); }
   };
-  const share = (u: Update) =>
-    window.open(waShare(`📢 *${u.title}*\n\n${u.body.slice(0, 280)}${u.body.length > 280 ? "…" : ""}\n\nRead more: ${window.location.origin}`), "_blank", "noopener");
+  const share = (u: { title: string; body: string }) => window.open(waShare(channelText(u)), "_blank", "noopener");
+  const copyText = async (u: { title: string; body: string }) => {
+    try { await navigator.clipboard.writeText(channelText(u)); setNote("Copied. Paste it into your WhatsApp channel."); }
+    catch { setError("Could not copy. Select the text manually."); }
+  };
 
   return (
     <section className="cu">
@@ -51,16 +64,36 @@ export default function CampusUpdates({ user, onSignIn }: { user: User | null; o
           <p>Official information, notices and media — the same updates shared on our WhatsApp channel.</p>
         </div>
         <div className="cu-hero-actions">
-          {CHANNEL && <a className="cu-btn cu-btn-light" href={CHANNEL} target="_blank" rel="noopener noreferrer">Join WhatsApp channel</a>}
+          {channel && <a className="cu-btn cu-btn-light" href={channel} target="_blank" rel="noopener noreferrer">Join WhatsApp channel</a>}
           {isAdmin && <button className="cu-btn" onClick={() => setAdminMode(!adminMode)}>{adminMode ? "Exit admin view" : "Admin desk"}</button>}
         </div>
       </header>
 
       {error && <p className="cu-error" role="alert">{error}</p>}
+      {note && <p className="cu-ok" role="status">{note}</p>}
+
+      {adminMode && user && (
+        <ChannelLink user={user} value={settings.updates_channel_url} onSaved={(s) => { setSettings(s); setNote("WhatsApp channel link saved."); }} />
+      )}
+
+      {posted && (
+        <div className="cu-posted" role="status">
+          <div className="cu-posted-head"><CheckCircle2 size={18} /> <b>Published in the app.</b> Now post it to your WhatsApp channel:</div>
+          <div className="cu-actions">
+            <button className="cu-btn" onClick={() => share(posted)}><Share2 size={15} /> Open WhatsApp</button>
+            <button className="cu-btn cu-btn-ghost" onClick={() => void copyText(posted)}><Copy size={15} /> Copy text</button>
+            {channel && <a className="cu-btn cu-btn-ghost" href={channel} target="_blank" rel="noopener noreferrer"><LinkIcon size={15} /> Open channel</a>}
+            <button className="cu-btn cu-btn-ghost" onClick={() => setPosted(null)}>Done</button>
+          </div>
+          <p className="cu-muted">WhatsApp does not let websites post into a channel automatically. “Open WhatsApp” pre-fills the message; choose your channel and send.</p>
+        </div>
+      )}
+
       {adminMode && !editing && <button className="cu-btn cu-new" onClick={() => setEditing("new")}><Plus size={16} /> New update</button>}
       {editing && user && (
         <Composer user={user} initial={editing === "new" ? null : editing}
-          onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(true); }} />
+          onClose={() => setEditing(null)}
+          onSaved={(r) => { setEditing(null); setNote(""); if (r.status === "published") setPosted({ title: r.title, body: r.body }); void load(true); }} />
       )}
 
       {loading ? <p className="cu-muted">Loading updates…</p> : items.length === 0 ? (
@@ -101,7 +134,35 @@ export default function CampusUpdates({ user, onSignIn }: { user: User | null; o
   );
 }
 
-function Composer({ user, initial, onClose, onSaved }: { user: User; initial: Update | null; onClose: () => void; onSaved: () => void }) {
+/** Admin pastes the WhatsApp channel link; it is saved in the database and shown to everyone. */
+function ChannelLink({ user, value, onSaved }: { user: User; value: string; onSaved: (s: CampusSettings) => void }) {
+  const [url, setUrl] = useState(value);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  useEffect(() => { setUrl(value); }, [value]);
+  const save = async (e: FormEvent) => {
+    e.preventDefault(); setBusy(true); setErr("");
+    try {
+      const r = await campusApi<{ settings: CampusSettings }>(user, "settings_save", { settings: { updates_channel_url: url } });
+      onSaved({ ...EMPTY_SETTINGS, ...r.settings });
+    } catch (e2) { setErr((e2 as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <form className="cu-composer cu-channel" onSubmit={save}>
+      <label>WhatsApp channel link for Chuka Updates
+        <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://whatsapp.com/channel/…" /></label>
+      <div className="cu-actions">
+        <button className="cu-btn" disabled={busy} type="submit">{busy ? "Saving…" : "Save link"}</button>
+        {url && <button className="cu-btn cu-btn-ghost" type="button" onClick={() => setUrl("")}>Clear</button>}
+      </div>
+      {err && <p className="cu-error" role="alert">{err}</p>}
+    </form>
+  );
+}
+
+type Saved = { status: "draft" | "published"; title: string; body: string };
+
+function Composer({ user, initial, onClose, onSaved }: { user: User; initial: Update | null; onClose: () => void; onSaved: (r: Saved) => void }) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [body, setBody] = useState(initial?.body ?? "");
   const [category, setCategory] = useState(initial?.category ?? "general");
@@ -129,7 +190,7 @@ function Composer({ user, initial, onClose, onSaved }: { user: User; initial: Up
         id: initial?.id, title, body, category, status, is_pinned: pinned,
         media_remove: removed, media_add: added.map(({ storage_path, kind }) => ({ storage_path, kind })),
       });
-      onSaved();
+      onSaved({ status, title: title.trim(), body: body.trim() });
     } catch (e2) { setErr((e2 as Error).message); setBusy(false); }
   };
 

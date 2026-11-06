@@ -56,3 +56,26 @@ export async function uploadCampusMedia(user: User, file: File): Promise<{ stora
 }
 
 export const waShare = (text: string) => `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+/** Links the admin edits inside the app (stored in the campus_settings table, public to read). */
+export type CampusSettings = {
+  updates_channel_url: string;
+  ozone_channel_url: string;
+  ozone_admin_whatsapp: string;
+  ozone_ngl_url: string;
+};
+export const EMPTY_SETTINGS: CampusSettings = {
+  updates_channel_url: "", ozone_channel_url: "", ozone_admin_whatsapp: "", ozone_ngl_url: "",
+};
+export async function fetchSettings(): Promise<CampusSettings> {
+  try {
+    const r = await campusApi<{ settings: Partial<CampusSettings> }>(null, "settings_public");
+    return { ...EMPTY_SETTINGS, ...r.settings };
+  } catch {
+    return EMPTY_SETTINGS;
+  }
+}
+
+/** wa.me link to a specific number (digits only, country code) with a prefilled message. */
+export const waLink = (number: string, text: string) =>
+  `https://wa.me/${number.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;

@@ -37,3 +37,9 @@
 .cu-error { color: #b42318; background: #fdeaea; padding: 10px 12px; border-radius: 10px; }
 .cu-muted { color: #7b8794; font-size: .9rem; } .cu-empty { text-align: center; color: #7b8794; }
 .cu-link { border: 0; background: none; color: #1d7a56; text-decoration: underline; cursor: pointer; padding: 0; }
+.cu-ok { background: #e6f6ec; color: #1b7a43; padding: 10px 12px; border-radius: 10px; }
+.cu-posted { background: #eefaf3; border: 1px solid #b9e2c9; border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+.cu-posted-head { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; color: #14573f; }
+.cu-posted .cu-muted { margin: 10px 0 0; }
+.cu-channel { margin-bottom: 14px; }
+.cu-composer input[type=url] { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px 12px; border: 1px solid #d3dcd8; border-radius: 10px; }

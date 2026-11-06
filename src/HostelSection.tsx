@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import type { User } from "firebase/auth";
-import { BadgeCheck, Building2, CalendarDays, Camera, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, MapPin, MessageCircle, Phone, RefreshCw, ShieldCheck, Users, X, ZoomIn } from "lucide-react";
+import { BadgeCheck, Building2, CalendarDays, Camera, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, MapPin, MessageCircle, Phone, RefreshCw, ShieldCheck, X, ZoomIn } from "lucide-react";
 import { hostelApi, type HostelAdminData, type HostelListing, type HostelSettings } from "./lib/hostelApi";
 import "./HostelSection.css";
 
@@ -135,7 +135,7 @@ export default function HostelSection({ user }: { user: User | null; onSignIn: (
   }
 
   return <section className="cc-hostel" aria-label="Hostel directory">
-    <header className="cc-hostel__hero">
+    <header className="cc-hostel__hero" style={{ "--hostel-bg": `url(${import.meta.env.BASE_URL}hostel-bg.jpeg)` } as import("react").CSSProperties}>
       <span className="cc-hostel__eyebrow">CHUKA COMRADES ACCOMMODATION</span>
       <h1>Find a hostel. Find your space.</h1>
       <p>Browse student accommodation around Chuka, contact landlords directly, or ask our admin team to help you connect.</p>
@@ -320,6 +320,19 @@ function ImageLightbox({ name, urls, start, onClose }: { name: string; urls: str
   );
 }
 
+function GoogleMapsLogo({ size = 30 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="Google Maps" focusable="false">
+    <defs><clipPath id="gm-pin"><path d="M24 2C14.6 2 7 9.6 7 19c0 12.5 17 27 17 27s17-14.5 17-27C41 9.6 33.4 2 24 2z"/></clipPath></defs>
+    <g clipPath="url(#gm-pin)">
+      <polygon points="0,0 48,0 24,19" fill="#EA4335"/>
+      <polygon points="0,0 24,19 0,48" fill="#4285F4"/>
+      <polygon points="48,0 24,19 48,48" fill="#FBBC04"/>
+      <polygon points="0,48 24,19 48,48" fill="#34A853"/>
+    </g>
+    <circle cx="24" cy="19" r="7.5" fill="#fff"/>
+  </svg>;
+}
+
 function HostelCard({ listing, adminWhatsApp }: { listing: HostelListing; adminWhatsApp: string }) {
   const message = `Hello ${listing.contact_name || "Landlord"}, I saw ${listing.name} on Chuka Comrades. Is accommodation still available?`;
   const adminMessage = `Hello Chuka Comrades admin, I am interested in ${listing.name} in ${listing.area}. Please help me connect with the landlord.`;
@@ -328,11 +341,12 @@ function HostelCard({ listing, adminWhatsApp }: { listing: HostelListing; adminW
     <div className="cc-hostel__card-body"><div className="cc-hostel__title"><h3>{listing.name}</h3>{listing.verified && <span><ShieldCheck size={13}/> Verified</span>}</div>
       <p className="cc-hostel__location"><MapPin size={15}/> {listing.area}{listing.landmark ? ` · Near ${listing.landmark}` : ""}</p>
       <strong className="cc-hostel__rent">{money(listing.rent_amount)} <small>/ {listing.rent_period}</small></strong>
-      <p>{listing.room_type} · {listing.available_rooms} room(s) available</p>
+      <p className="cc-hostel__muted">{listing.room_type}</p>
+      <div className={`cc-hostel__rooms${listing.available_rooms > 0 ? "" : " is-full"}`} aria-label={`${listing.available_rooms} rooms available`}><b>{listing.available_rooms}</b><span>{listing.available_rooms > 0 ? (listing.available_rooms === 1 ? "room available" : "rooms available") : "No rooms available"}</span></div>
       {listing.available_from && <p className="cc-hostel__muted"><CalendarDays size={14}/> Available from {listing.available_from}</p>}
       {listing.description && <p className="cc-hostel__description">{listing.description}</p>}
       {listing.facilities.length > 0 && <p className="cc-hostel__facilities">{listing.facilities.join(" · ")}</p>}
-      {listing.location_url && <a className="cc-hostel__map" href={listing.location_url} target="_blank" rel="noreferrer"><MapPin size={14}/> Open map <ExternalLink size={12}/></a>}
+      {listing.location_url && <a className="cc-hostel__map" href={listing.location_url} target="_blank" rel="noreferrer" aria-label={`Open ${listing.name} on Google Maps`} title="Open in Google Maps"><GoogleMapsLogo/><span>Google Maps</span></a>}
       <div className="cc-hostel__contact"><strong>{listing.contact_name || "Landlord contact"}</strong><span>{listing.landlord_contact}</span></div>
       <div className="cc-hostel__card-actions"><a href={waLink(listing.landlord_contact,message)} target="_blank" rel="noreferrer"><MessageCircle size={16}/> WhatsApp landlord</a><a className="is-outline" href={`tel:${digits(listing.landlord_contact)}`}><Phone size={16}/> Call landlord</a></div>
       {adminWhatsApp && <a className="cc-hostel__admin-link" href={waLink(adminWhatsApp,adminMessage)} target="_blank" rel="noreferrer">Need help? Chat with Chuka Comrades admin</a>}

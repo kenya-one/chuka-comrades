@@ -33,3 +33,26 @@
 .ozc-unread { border-left: 4px solid #6b3fa0; }
 .ozc blockquote { margin: 8px 0; padding: 8px 12px; border-left: 3px solid #a14e81; background: #faf7fd; border-radius: 6px; }
 .ozc-privacy { display: flex; gap: 6px; align-items: flex-start; color: #77778b; font-size: .8rem; margin-top: 18px; }
+
+/* ---- additions: rules gate, requests, consent, admin badges ---- */
+.ozc-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px; border-radius: 999px; background: #a14e81; color: #fff; font-size: .7rem; font-weight: 700; }
+.ozc-tabs button.on .ozc-badge { background: #fff; color: #6b3fa0; }
+.ozc-rules { margin: 10px 0; } .ozc-rules summary { cursor: pointer; font-weight: 600; color: #4f2c7d; }
+.ozc-rules ul { margin: 8px 0; padding-left: 20px; line-height: 1.55; font-size: .9rem; }
+.ozc-rule { font-weight: 500 !important; line-height: 1.45; align-items: flex-start !important; margin-bottom: 8px; }
+.ozc-rule input { margin-top: 3px !important; }
+.ozc-choice { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 10px 0 14px; }
+.ozc-pick { display: grid !important; gap: 2px; border: 2px solid #e0d8ec; border-radius: 14px; padding: 12px 14px; cursor: pointer; margin: 0 !important; }
+.ozc-pick input { position: absolute; opacity: 0; width: 0 !important; height: 0; }
+.ozc-pick span { font-weight: 400; color: #77778b; font-size: .84rem; }
+.ozc-pick.on { border-color: #6b3fa0; background: #faf7fd; }
+.ozc-ok-card { border-color: #b9e2c9; background: #f2fbf5; }
+.ozc-req { border-top: 1px solid #eceaf1; padding: 12px 0; }
+.ozc-req:first-of-type { border-top: 0; }
+.ozc-consent { margin-top: 8px; font-weight: 500 !important; align-items: flex-start !important; }
+.ozc-revealed { background: #f2fbf5; border: 1px solid #b9e2c9; border-radius: 10px; padding: 10px 12px; margin: 8px 0; line-height: 1.5; }
+.ozc-chip.pending, .ozc-chip.forwarded, .ozc-chip.paused { background: #fff4d6; color: #8a5a00; }
+.ozc-chip.introduced, .ozc-chip.published { background: #e6f6ec; color: #1b7a43; }
+.ozc-chip.suspended, .ozc-chip.declined, .ozc-chip.closed { background: #fdeaea; color: #b42318; }
+.ozc input[type=url], .ozc input[type=tel] { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px 12px; border: 1px solid #ddd6e8; border-radius: 10px; }
+.ozc-sub a { color: #6b3fa0; }
