@@ -405,7 +405,11 @@ function AdminEditHostelForm({ user, listing, busy, maxImages, onCancel, onSave 
       <label>Nearby landmark<input value={form.landmark} onChange={e=>setForm({...form,landmark:e.target.value})}/></label>
       <label>Google Maps link<input type="url" value={form.location_url} onChange={e=>setForm({...form,location_url:e.target.value})}/></label>
       <label>Rent (KSh)<input type="number" min="0" required value={form.rent_amount} onChange={e=>setForm({...form,rent_amount:e.target.value})}/></label>
-      <label>Rent period<select value={form.rent_period} onChange={e=>setForm({...form,rent_period:e.target.value})}><option value="month">Per month</option><option value="semester">Per semester</option></select></label>
+      <label>Rent perio<select value={form.rent_period} onChange={(e) => setForm({...form,rent_period: e.target.value as "month" | "semester",})}>
+    <option value="month">Per month</option>
+    <option value="semester">Per semester</option>
+  </select>
+</label>
       <label>Room type<input required value={form.room_type} onChange={e=>setForm({...form,room_type:e.target.value})}/></label>
       <label>Total rooms<input type="number" min="0" value={form.total_rooms} onChange={e=>setForm({...form,total_rooms:e.target.value})}/></label>
       <label>Available rooms<input type="number" min="0" required value={form.available_rooms} onChange={e=>setForm({...form,available_rooms:e.target.value})}/></label>
