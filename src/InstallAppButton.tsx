@@ -1,146 +1,196 @@
-import { useEffect, useState } from 'react'
-import { Download, Share2, X } from 'lucide-react'
-import './InstallAppButton.css'
+import { useEffect, useState } from "react";
+import { X } from "lucide-react";
+import "./InstallAppButton.css";
 
 interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>
+  prompt: () => Promise<void>;
   userChoice: Promise<{
-    outcome: 'accepted' | 'dismissed'
-    platform: string
-  }>
+    outcome: "accepted" | "dismissed";
+    platform: string;
+  }>;
+}
+
+function getAppUrl() {
+  return `${window.location.origin}${import.meta.env.BASE_URL}`;
 }
 
 export default function InstallAppButton() {
   const [installPrompt, setInstallPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null)
+    useState<BeforeInstallPromptEvent | null>(null);
 
-  const [isIOS, setIsIOS] = useState(false)
-  const [isInstalled, setIsInstalled] = useState(false)
-  const [showInstructions, setShowInstructions] = useState(false)
+  const [isIOS, setIsIOS] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   useEffect(() => {
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as Navigator & { standalone?: boolean }).standalone === true
+    const checkInstalled = () => {
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (navigator as Navigator & { standalone?: boolean }).standalone === true;
 
-    setIsInstalled(standalone)
+      setIsInstalled(standalone);
+    };
+
+    checkInstalled();
 
     const appleDevice =
       /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-    setIsIOS(appleDevice)
+    setIsIOS(appleDevice);
 
     const handleBeforeInstall = (event: Event) => {
-      event.preventDefault()
-      setInstallPrompt(event as BeforeInstallPromptEvent)
-    }
+      event.preventDefault();
+
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
 
     const handleInstalled = () => {
-      setIsInstalled(true)
-      setInstallPrompt(null)
-      setShowInstructions(false)
-    }
+      setIsInstalled(true);
+      setInstallPrompt(null);
+      setShowInstructions(false);
+    };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall)
-    window.addEventListener('appinstalled', handleInstalled)
+    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+    window.addEventListener("appinstalled", handleInstalled);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
-      window.removeEventListener('appinstalled', handleInstalled)
-    }
-  }, [])
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstall,
+      );
+      window.removeEventListener("appinstalled", handleInstalled);
+    };
+  }, []);
 
   const handleInstall = async () => {
-    if (!installPrompt) {
-      if (isIOS) {
-        setShowInstructions(!showInstructions)
-      } else {
-        alert(
-          'To install Chuka Comrades, use your browser menu and select "Install Chuka Comrades" or "Add to Home Screen".'
-        )
+    /*
+     * Android / Chrome / Edge:
+     * This directly opens the browser's native PWA
+     * installation dialog.
+     */
+    if (installPrompt) {
+      await installPrompt.prompt();
+
+      const result = await installPrompt.userChoice;
+
+      if (result.outcome === "accepted") {
+        setIsInstalled(true);
       }
 
-      return
+      setInstallPrompt(null);
+      return;
     }
 
-    await installPrompt.prompt()
-
-    const result = await installPrompt.userChoice
-
-    if (result.outcome === 'accepted') {
-      setIsInstalled(true)
+    /*
+     * iPhone / iPad does not expose beforeinstallprompt.
+     * The browser requires the user to use Safari's
+     * Add to Home Screen flow.
+     */
+    if (isIOS) {
+      setShowInstructions((current) => !current);
+      return;
     }
 
-    setInstallPrompt(null)
+    /*
+     * If the browser has not supplied the install prompt yet,
+     * open the application URL. The PWA remains installable
+     * through the browser's native menu.
+     */
+    window.location.href = getAppUrl();
+  };
+
+  if (isInstalled) {
+    return null;
   }
 
-  if (isInstalled) return null
-
+  /*
+   * Keep the button visible on supported browsers and iOS.
+   * This means the user can always see the Install app CTA.
+   */
   return (
     <div className="install-app-wrap">
       <button
+        type="button"
         className="install-app-button"
-        onClick={() => void handleInstall()}
+        onClick={() => {
+          void handleInstall();
+        }}
         aria-label="Install Chuka Comrades app"
       >
-        <Download size={18} />
-        <span>Install App</span>
+        <img
+          src={`${import.meta.env.BASE_URL}chukalogo.png`}
+          alt=""
+        />
+
+        <span>Install app</span>
       </button>
 
       {isIOS && showInstructions && (
         <div className="install-instructions">
           <button
+            type="button"
             className="install-instructions-close"
             onClick={() => setShowInstructions(false)}
-            aria-label="Close instructions"
+            aria-label="Close installation instructions"
           >
             <X size={17} />
           </button>
 
           <strong>Install Chuka Comrades</strong>
 
-          <p>Follow these steps on your iPhone or iPad:</p>
+          <p>
+            On your iPhone or iPad:
+          </p>
 
           <ol>
-            <li>Open this website in Safari.</li>
-            <li>Tap the Share button.</li>
-            <li>Select Add to Home Screen.</li>
-            <li>Tap Add to finish.</li>
+            <li>Open Chuka Comrades in Safari.</li>
+            <li>Tap the Safari Share button.</li>
+            <li>Select <strong>Add to Home Screen</strong>.</li>
+            <li>Tap <strong>Add</strong>.</li>
           </ol>
 
           <small>
-            Your Chuka Comrades logo will appear on your Home Screen.
+            The Chuka Comrades logo will appear on your Home Screen.
           </small>
         </div>
       )}
     </div>
-  )
+  );
 }
 
+/*
+ * WhatsApp sharing button.
+ * Shares the live Chuka Comrades application URL.
+ */
 export function WhatsAppShareButton() {
-  const handleWhatsAppShare = () => {
-    const shareText =
-      'Join me on Chuka Comrades — your campus community platform. Connect, learn and grow together.'
+  const handleShare = () => {
+    const appUrl = getAppUrl();
 
-    const shareUrl = window.location.href
+    const message =
+      `Join me on Chuka Comrades — your campus community for ` +
+      `students, hostels, marketplace, sports, study resources and more.\n\n` +
+      `${appUrl}`;
 
     const whatsappUrl =
-      `https://wa.me/?text=${encodeURIComponent(
-        `${shareText}\n\n${shareUrl}`
-      )}`
+      `https://wa.me/?text=${encodeURIComponent(message)}`;
 
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
-  }
+    window.open(
+      whatsappUrl,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
 
   return (
     <button
+      type="button"
       className="whatsapp-share-button"
-      onClick={handleWhatsAppShare}
+      onClick={handleShare}
       aria-label="Share Chuka Comrades on WhatsApp"
     >
-      <Share2 size={18} />
+      <span aria-hidden="true">◉</span>
       <span>Share on WhatsApp</span>
     </button>
-  )
+  );
 }
