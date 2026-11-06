@@ -12,7 +12,7 @@ type Props={user:User|null;onSignIn:()=>void};
 
 function fmtDate(value:string){const d=new Date(value);return Number.isNaN(d.getTime())?"Date TBA":d.toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric"});}
 function fmtTime(value:string){const d=new Date(value);return Number.isNaN(d.getTime())?"Time TBA":d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});}
-function teamName(data:Bootstrap,id:string){return data.teams.find(t=>t.id===id)?.name||"Team TBA";}
+
 function Logo({src,size=22}:{src?:string;size?:number}){const [bad,setBad]=useState(false);useEffect(()=>setBad(false),[src]);return src&&!bad?<img src={src} alt="" referrerPolicy="no-referrer" loading="lazy" onError={()=>setBad(true)}/>:<Shield size={size}/>;}
 function parseDetails(v?:string):Record<string,string>{try{return v?JSON.parse(v):{};}catch{return {};}}
 type FixtureX=Fixture&{homeLogo?:string;awayLogo?:string};
