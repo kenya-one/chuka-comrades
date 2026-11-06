@@ -1,0 +1,124 @@
+
+.install-app-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  z-index: 30;
+}
+
+.install-app-button {
+  min-height: 43px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #dce9df;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #155c39;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+
+.install-app-button:hover {
+  background: #edf5ef;
+  transform: translateY(-1px);
+}
+
+.install-app-button img {
+  width: 27px;
+  height: 27px;
+  object-fit: contain;
+}
+
+.install-instructions {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 280px;
+  padding: 20px;
+  border: 1px solid #e1eae2;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 15px 45px #173b2820;
+  color: #173b28;
+}
+
+.install-instructions strong {
+  display: block;
+  padding-right: 20px;
+  font-size: 15px;
+}
+
+.install-instructions p {
+  margin: 10px 0;
+  color: #617066;
+  font-size: 12px;
+}
+
+.install-instructions ol {
+  padding-left: 20px;
+  color: #354b3c;
+  font-size: 12px;
+  line-height: 2;
+}
+
+.install-instructions small {
+  display: block;
+  color: #718074;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.install-instructions-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #526257;
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .onepage-header > .install-app-wrap {
+    order: 2;
+  }
+
+  .onepage-header > .header-signin {
+    order: 3;
+  }
+
+  .onepage-header > .onepage-nav {
+    order: 4;
+  }
+
+  .install-app-button {
+    width: 38px;
+    min-height: 36px;
+    height: 36px;
+    padding: 4px;
+    border-radius: 10px;
+  }
+
+  .install-app-button img {
+    width: 27px;
+    height: 27px;
+  }
+
+  .install-app-button span {
+    display: none;
+  }
+
+  .install-instructions {
+    position: fixed;
+    top: 125px;
+    right: 14px;
+    width: min(280px, calc(100vw - 28px));
+  }
+}

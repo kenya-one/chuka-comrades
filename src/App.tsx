@@ -52,6 +52,7 @@ import HostelSection from "./HostelSection";
 import ChukaSoko from "./ChukaSoko";
 import Cpl from "./Cpl";
 import "./App.css";
+import InstallAppButton from "./InstallAppButton";
 
 const ADMIN_WHATSAPP = "254180752220";
 const waHref = (message: string) => `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
@@ -464,7 +465,25 @@ function App() {
             <button key={item.id} className={activeView === item.id ? "active" : ""} onClick={() => { setActiveCommunity(null); if (item.id === "digital") openStudyLabs("Products"); else setActiveView(item.id); }}>{item.label}</button>
           ))}
         </nav>
-        {user ? <button className="header-signin signed-in" onClick={handleSignOut} disabled={busy}>{busy ? "Please wait…" : "Sign out"}</button> : <button className="header-signin" onClick={handleGoogleSignIn} disabled={busy}>Sign in <ChevronRight size={16} /></button>}
+        <InstallAppButton />
+
+{user ? (
+  <button
+    className="header-signin signed-in"
+    onClick={handleSignOut}
+    disabled={busy}
+  >
+    {busy ? "Please wait…" : "Sign out"}
+  </button>
+) : (
+  <button
+    className="header-signin"
+    onClick={handleGoogleSignIn}
+    disabled={busy}
+  >
+    Sign in <ChevronRight size={16} />
+  </button>
+)}
       </header>
 
       <section className="onepage-content" id="home">
