@@ -662,6 +662,15 @@ async function anonApproved() {
   return { messages: ok(await db.from("anon_messages").select("id,body,kind,created_at").eq("status", "approved").order("created_at", { ascending: false }).limit(30)) };
 }
 
+/** Public and anonymous: only counts and a date. No alias, area, bio, interests or contact details. */
+async function profilesFeedPublic() {
+  const rows = ok(await db.from("ozc_profiles").select("published_at").eq("status", "published")
+    .eq("age_18_confirmed", true).eq("consent_confirmed", true).order("published_at", { ascending: false }).limit(1000)) as any[];
+  const weekAgo = Date.now() - 7 * 86400000;
+  const recent = rows.filter((r) => r.published_at && new Date(r.published_at).getTime() >= weekAgo).length;
+  return { total: rows.length, recent, latest_at: rows[0]?.published_at ?? null };
+}
+
 /* ------------------------------------------------------------------ router */
 Deno.serve(async (req) => {
   const o = req.headers.get("Origin");
@@ -678,6 +687,7 @@ Deno.serve(async (req) => {
     if (b.action === "settings_public") return json(await settingsPublic(), 200, o);
     if (b.action === "anon_submit") return json(await anonSubmit(req, b), 200, o);
     if (b.action === "anon_approved") return json(await anonApproved(), 200, o);
+    if (b.action === "profiles_feed_public") return json(await profilesFeedPublic(), 200, o);
 
     const c = await requireCaller(req);
     let r: unknown;

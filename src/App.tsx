@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   onAuthStateChanged,
   signInWithPopup,
@@ -27,12 +27,23 @@ import {
   Clock3,
   RefreshCw,
   MapPin,
+  Copy,
+  Gamepad2,
+  Target,
+  ShieldAlert,
+  ScrollText,
+  Camera,
+  Layers,
+  PackageSearch,
+  Globe,
+  Sparkles,
 } from "lucide-react";
 import { auth, googleProvider } from "./lib/firebase";
 import { supabase } from "./lib/supabase";
 import StudyLabs from "./StudyLabs";
 import CampusUpdates from "./CampusUpdates";
 import { campusApi } from "./lib/campusApi";
+import { loadDirectFeed, imageCandidates, resolveImage } from "./lib/landingFeed";
 import Efootball from "./Efootball";
 import Pool from "./Pool";
 import { PoolLogo } from "./games/logos";
@@ -83,17 +94,31 @@ const applicationServices: ServiceCard[] = [
     waMessage: fill("I need help with a Huduma Kenya service.", ["Service needed", "Full name"]) },
 ];
 
-const extraServices: ServiceCard[] = [
-  { title: "Cyber & Printing", description: "Printing, photocopying, scanning, lamination, binding, typing and passport photos. Send your file in the chat.", icon: Printer, label: "Cyber services", mode: "whatsapp", action: "Order on WhatsApp",
-    waMessage: fill("I need cyber / printing help.", ["Service (print / copy / scan / typing / passport photos / lamination / binding)", "Number of pages", "Colour or black & white", "Pick-up or delivery"]) },
+// Print-out help: everything here is ordered through the admin on WhatsApp.
+const printServices: ServiceCard[] = [
+  { title: "Request a Letter", description: "Introduction, recommendation, attachment, bank, visa or any other official letter. Tell us who it is addressed to.", icon: ScrollText, label: "Letters", mode: "whatsapp", action: "Request on WhatsApp",
+    waMessage: fill("I would like to request a letter.", ["Type of letter (introduction / recommendation / attachment / bank / other)", "Full name", "Registration number", "Addressed to", "Needed by (date)"]) },
+  { title: "Printing", description: "Send your file in the chat and we print it in colour or black & white, ready for pick-up or delivery.", icon: Printer, label: "Cyber & printing", mode: "whatsapp", action: "Order on WhatsApp",
+    waMessage: fill("I need printing done.", ["Number of pages", "Colour or black & white", "Single or double sided", "Pick-up or delivery"]) },
+  { title: "Photocopying & Scanning", description: "Photocopies of IDs, certificates and notes, plus scanning to PDF sent straight to your WhatsApp or email.", icon: Copy, label: "Copies & scans", mode: "whatsapp", action: "Order on WhatsApp",
+    waMessage: fill("I need photocopying / scanning.", ["Service (photocopy / scan)", "Number of pages", "Pick-up or delivery"]) },
+  { title: "Typing, Binding & Lamination", description: "Typing of assignments and CVs, spiral binding, hard binding and lamination for projects and documents.", icon: Layers, label: "Finishing", mode: "whatsapp", action: "Order on WhatsApp",
+    waMessage: fill("I need typing / binding / lamination.", ["Service (typing / spiral binding / hard binding / lamination / CV)", "Number of pages or copies", "Needed by (date)"]) },
+  { title: "Passport Photos", description: "Passport-size photos for applications, IDs and forms. Tell us how many you need.", icon: Camera, label: "Photos", mode: "whatsapp", action: "Order on WhatsApp",
+    waMessage: fill("I need passport photos.", ["Number of photos", "Needed by (date)", "Pick-up or delivery"]) },
   { title: "Fee Transfer", description: "Get help paying university fees and other fees. Share the details in the chat.", icon: Banknote, label: "Payments", mode: "whatsapp", action: "Request on WhatsApp",
     waMessage: fill("I need help with a fee transfer.", ["Type (university fees / other)", "Registration number", "Amount (KSh)", "Payment code or reference"]) },
+  { title: "Lost & Found", description: "Lost something on campus or found something that is not yours? Report it and we help it find its owner.", icon: PackageSearch, label: "Campus help", mode: "whatsapp", action: "Report on WhatsApp",
+    waMessage: fill("I want to report a lost / found item.", ["Lost or found", "Item (ID, phone, keys, bag, other)", "Where and when", "Short description"]) },
+  { title: "Anything Else", description: "Need something that is not listed? Message the admin and describe what you need.", icon: Sparkles, label: "Other requests", mode: "whatsapp", action: "Ask on WhatsApp",
+    waMessage: fill("I need help with a request that is not listed.", ["What you need", "Full name", "Needed by (date)"]) },
 ];
 
-const serviceGroups: { kicker: string; title: string; note?: string; items: ServiceCard[] }[] = [
-  { kicker: "OPEN ONLINE", title: "University portals & resources", items: linkServices },
-  { kicker: "APPLY VIA WHATSAPP", title: "Government services", note: "Applications are handled in WhatsApp with the admin. Never send your passwords or PINs in chat.", items: applicationServices },
-  { kicker: "ALSO ON WHATSAPP", title: "Cyber & fee services", items: extraServices },
+type ServiceGroup = { id: string; step: string; kicker: string; title: string; blurb: string; note?: string; icon: typeof Landmark; tone: "links" | "apply" | "print"; items: ServiceCard[] };
+const serviceGroups: ServiceGroup[] = [
+  { id: "svc-links", step: "01", kicker: "OPEN ONLINE", title: "Important links", blurb: "Official university and county websites, one tap away.", icon: Globe, tone: "links", items: linkServices },
+  { id: "svc-apply", step: "02", kicker: "WE HELP YOU APPLY", title: "Help with online applications & services", blurb: "We guide you through government and student-finance applications on WhatsApp.", note: "Never send your passwords, PINs or OTP codes in chat. The admin will never ask for them.", icon: Landmark, tone: "apply", items: applicationServices },
+  { id: "svc-print", step: "03", kicker: "ORDER VIA WHATSAPP", title: "Print-out help", blurb: "Letters, printing, photocopying, fee transfer, lost & found and more, all handled by the admin on WhatsApp.", icon: Printer, tone: "print", items: printServices },
 ];
 
 type LandingFeedItem = {
@@ -112,8 +137,9 @@ const feedSections = [
   { key: "campus_updates", openLabel: "Open Campus Updates", title: "Campus Updates", subtitle: "Official announcements, events & opportunities", icon: BellRing },
   { key: "marketplace", openLabel: "Open Chuka Soko", title: "Chuka Soko", subtitle: "Latest student listings", icon: ShoppingBag },
   { key: "hostels", openLabel: "Open Hostels & Roommates", title: "Hostels & Roommates", subtitle: "New accommodation posts", icon: House },
-  { key: "events", openLabel: "See campus events", title: "Campus Updates & Events", subtitle: "What's happening around campus", icon: BellRing },
   { key: "sports", openLabel: "See sports updates", title: "Chuka Premier League", subtitle: "Latest football updates", icon: Trophy },
+  { key: "efootball", openLabel: "Open Chuka Efootball", title: "Chuka Efootball", subtitle: "Tournaments & accounts for sale", icon: Gamepad2 },
+  { key: "pool", openLabel: "Open Chuka Pool", title: "Chuka Pool", subtitle: "Tournaments & pool points", icon: Target },
   { key: "discussions", openLabel: "Open Chuka O Zone", title: "Chuka O Zone", subtitle: "Fresh community conversations", icon: MessageCircle },
   { key: "digital_products", openLabel: "Open Project Hub", title: "Digital Products", subtitle: "Recently added downloads", icon: Download },
   { key: "opportunities", openLabel: "See opportunities", title: "Opportunities", subtitle: "Jobs, attachments & scholarships", icon: BriefcaseBusiness },
@@ -142,7 +168,18 @@ async function syncLandingFeed(): Promise<boolean> {
   } catch { return false; }
 }
 
-const updateSection: Record<string, string> = { events: "events", opportunities: "opportunities", sports: "sports" };
+const updateSection: Record<string, string> = { opportunities: "opportunities", sports: "sports" };
+// The separate Events card was removed: event posts and old "events" rows show under Campus Updates.
+const normalizeSection = (section: string) => (section === "events" ? "campus_updates" : section);
+
+/** Feed thumbnail: tries alternate Google Drive addresses, and disappears cleanly if none load. */
+function FeedImg({ src }: { src: string }) {
+  const list = useMemo(() => imageCandidates(src), [src]);
+  const [i, setI] = useState(0);
+  useEffect(() => setI(0), [src]);
+  if (i >= list.length) return null;
+  return <img src={list[i]} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setI((n) => n + 1)} />;
+}
 
 function LiveCampusFeed({ onOpenSection }: { onOpenSection: (sectionKey: string) => void }) {
   const [items, setItems] = useState<LandingFeedItem[]>([]);
@@ -153,11 +190,13 @@ function LiveCampusFeed({ onOpenSection }: { onOpenSection: (sectionKey: string)
   const loadFeed = useCallback(async () => {
     const client = supabase;
     // Real Campus Updates posts (published by the admin) and the moderated landing_feed table.
-    const [updatesResult, feedResult] = await Promise.allSettled([
+    const [updatesResult, feedResult, directResult] = await Promise.allSettled([
       campusApi<{ updates: Array<{ id: string; title: string; body: string; category?: string; published_at: string | null; created_at: string; media?: Array<{ kind: string; url: string | null }> }> }>(null, "updates_list"),
       client
         ? client.from("landing_feed").select("id, section, title, description, image_url, price, location, link_url, created_at").eq("is_published", true).order("created_at", { ascending: false }).limit(70)
         : Promise.resolve({ data: [], error: null }),
+      // Read Soko, Hostels, O Zone, Study Labs and CPL directly so every card fills in.
+      loadDirectFeed(),
     ]);
 
     const merged: LandingFeedItem[] = [];
@@ -172,7 +211,7 @@ function LiveCampusFeed({ onOpenSection }: { onOpenSection: (sectionKey: string)
           section: updateSection[u.category || ""] || "campus_updates",
           title: u.title,
           description: u.body.length > 160 ? `${u.body.slice(0, 160).trim()}…` : u.body,
-          image_url: image?.url ?? null,
+          image_url: resolveImage(image?.url),
           price: null,
           location: null,
           link_url: null,
@@ -182,7 +221,16 @@ function LiveCampusFeed({ onOpenSection }: { onOpenSection: (sectionKey: string)
     }
     if (feedResult.status === "fulfilled" && !feedResult.value.error) {
       feedOk = true;
-      merged.push(...((feedResult.value.data || []) as LandingFeedItem[]));
+      merged.push(...((feedResult.value.data || []) as LandingFeedItem[]).map((row) => ({ ...row, section: normalizeSection(row.section), image_url: resolveImage(row.image_url) })));
+    }
+    if (directResult.status === "fulfilled" && directResult.value.okCount > 0) {
+      feedOk = true;
+      // Direct items win; drop synced rows that repeat the same title in the same section.
+      const dupKey = (m: LandingFeedItem) => `${m.section}|${m.title.trim().toLowerCase()}|${(m.description || "").slice(0, 60).toLowerCase()}`;
+      const seen = new Set(merged.map(dupKey));
+      for (const d of directResult.value.items) {
+        if (!seen.has(dupKey(d))) { merged.push(d); seen.add(dupKey(d)); }
+      }
     }
     merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setItems(merged);
@@ -240,7 +288,7 @@ function LiveCampusFeed({ onOpenSection }: { onOpenSection: (sectionKey: string)
                 <div className="live-feed-items">
                   {sectionItems.map((item) => (
                     <article className="live-feed-item" key={item.id}>
-                      {item.image_url && <img src={item.image_url} alt="" loading="lazy" />}
+                      {item.image_url && <FeedImg src={item.image_url} />}
                       <div className="live-feed-item-copy">
                         <strong>{item.title}</strong>
                         {item.description && <p>{item.description}</p>}
@@ -259,7 +307,7 @@ function LiveCampusFeed({ onOpenSection }: { onOpenSection: (sectionKey: string)
                   {feedLoading ? "Checking for new posts…" : "New posts will appear here as students share updates."}
                 </div>
               )}
-              <button className="feed-open-updates" onClick={() => onOpenSection(section.key)}>{section.openLabel} <ArrowUpRight size={13} /></button>
+              <button className="feed-open-updates" onClick={() => onOpenSection(section.key)}><span>{section.openLabel}</span><span className="feed-open-arrow"><ArrowUpRight size={14} /></span></button>
             </article>
           );
         })}
@@ -289,7 +337,7 @@ function App() {
   const [studyLabsTab, setStudyLabsTab] = useState<"Resources" | "Products">("Resources");
   const openStudyLabs = (tab: "Resources" | "Products") => { setStudyLabsTab(tab); setShowStudyLabs(true); };
   const [activeView, setActiveView] = useState("home");
-  const [activeCommunity, setActiveCommunity] = useState<string | null>(() => /^#\/efootball\//.test(window.location.hash) ? "Chuka Efootball" : /^#\/pool\//.test(window.location.hash) ? "Chuka Pool" : /^#\/soko\//.test(window.location.hash) ? "Chuka Soko" : null);
+  const [activeCommunity, setActiveCommunity] = useState<string | null>(() => /^#\/cpl(?:$|[/?])/.test(window.location.hash) ? "Chuka Premier League" : /^#\/efootball\//.test(window.location.hash) ? "Chuka Efootball" : /^#\/pool\//.test(window.location.hash) ? "Chuka Pool" : /^#\/soko\//.test(window.location.hash) ? "Chuka Soko" : null);
 
   useEffect(() => {
     // Keep the branded welcome screen visible long enough to be noticed,
@@ -366,7 +414,7 @@ function App() {
     }
   }
 
-  if (loading) {
+  if (loading && activeCommunity !== "Chuka Premier League") {
     return (
       <main className="loading-screen" aria-label="Loading Chuka Comrades">
         <div className="loading-brand">
@@ -399,7 +447,7 @@ function App() {
   ];
 
   return (
-    <main className="site-shell onepage-shell">
+    <main className={`site-shell onepage-shell${activeCommunity === "Chuka Premier League" ? " cpl-mode" : ""}`}>
       <header className="site-header onepage-header">
         <a className="brand" href="#home" onClick={() => { setActiveView("home"); setActiveCommunity(null); }} aria-label="Chuka Comrades home">
           <span className="brand-crest-wrap">
@@ -434,14 +482,21 @@ function App() {
           <div className="onepage-bottom-row"><div className="onepage-pulse"><span className="section-kicker"><span className="live-dot"/> CAMPUS PULSE</span><strong>What's happening around Chuka?</strong><small>Latest listings, conversations, sports and opportunities.</small><button onClick={() => setActiveView("updates")}>View campus updates <ArrowUpRight size={14}/></button></div><div className="onepage-shortcuts"><span className="section-kicker">QUICK ACCESS</span><button onClick={() => setActiveView("services")}>University & government services <ArrowUpRight size={14}/></button><button onClick={() => openStudyLabs("Products")}>Digital products <ArrowUpRight size={14}/></button></div></div>
         </>}
 
-        {activeView === "home" && activeCommunity && <div className="onepage-detail"><button className="back-link" onClick={() => setActiveCommunity(null)}>← Back to communities</button>{activeCommunity === "Chuka Efootball" ? <Efootball user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Chuka Pool" ? <Pool user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Campus Updates" ? <CampusUpdates user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Chuka O Zone" ? <OZone user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Hostels & Roommates" ? <HostelSection user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Chuka Soko" ? <ChukaSoko user={user} onSignIn={handleGoogleSignIn} onBack={() => setActiveCommunity(null)}/> : activeCommunity === "Chuka Premier League" ? <Cpl user={user} onSignIn={handleGoogleSignIn}/> : <><span className="section-kicker">CHUKA COMRADES COMMUNITY</span><h1>{activeCommunity}</h1><p>{communities.find(c => c.title === activeCommunity)?.subtitle}</p><div className="community-detail-card"><Users size={28}/><h2>Welcome to {activeCommunity}</h2><p>This community space is being prepared. Its posts, discussions and activities will appear here as features are connected.</p></div></>}</div>}
+        {activeView === "home" && activeCommunity && <div className={activeCommunity === "Chuka Premier League" ? "onepage-detail cpl-detail-shell" : "onepage-detail"}>{activeCommunity !== "Chuka Premier League" && <button className="back-link" onClick={() => setActiveCommunity(null)}>← Back to communities</button>}{activeCommunity === "Chuka Efootball" ? <Efootball user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Chuka Pool" ? <Pool user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Campus Updates" ? <CampusUpdates user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Chuka O Zone" ? <OZone user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Hostels & Roommates" ? <HostelSection user={user} onSignIn={handleGoogleSignIn}/> : activeCommunity === "Chuka Soko" ? <ChukaSoko user={user} onSignIn={handleGoogleSignIn} onBack={() => setActiveCommunity(null)}/> : activeCommunity === "Chuka Premier League" ? <Cpl user={user} onSignIn={handleGoogleSignIn}/> : <><span className="section-kicker">CHUKA COMRADES COMMUNITY</span><h1>{activeCommunity}</h1><p>{communities.find(c => c.title === activeCommunity)?.subtitle}</p><div className="community-detail-card"><Users size={28}/><h2>Welcome to {activeCommunity}</h2><p>This community space is being prepared. Its posts, discussions and activities will appear here as features are connected.</p></div></>}</div>}
 
         {activeView === "updates" && <div className="onepage-panel"><button className="back-link" onClick={() => setActiveView("home")}>← Home</button><LiveCampusFeed onOpenSection={(key) => {
             if (key === "digital_products") { openStudyLabs("Products"); return; }
-            const target: Record<string, string> = { marketplace: "Chuka Soko", hostels: "Hostels & Roommates", discussions: "Chuka O Zone" };
+            const target: Record<string, string> = { marketplace: "Chuka Soko", hostels: "Hostels & Roommates", discussions: "Chuka O Zone", sports: "Chuka Premier League", efootball: "Chuka Efootball", pool: "Chuka Pool" };
             setActiveView("home"); setActiveCommunity(target[key] || "Campus Updates");
           }}/></div>}
-        {activeView === "services" && <div className="onepage-panel"><button className="back-link" onClick={() => setActiveView("home")}>← Home</button><span className="section-kicker">QUICK ACCESS</span><h1>University & Government Services</h1><p className="services-intro">Open official portals directly, or chat with the Chuka Comrades admin on WhatsApp for applications, printing and fee payments.</p>{serviceGroups.map(group => <section className="service-group" key={group.title}><div className="service-group-head"><span className="section-kicker">{group.kicker}</span><h2>{group.title}</h2>{group.note && <p className="service-note">{group.note}</p>}</div><div className="onepage-link-grid">{group.items.map(service => { const Icon = service.icon; const isWa = service.mode === "whatsapp"; return <a key={service.title} className={isWa ? "service-card-wa" : undefined} href={isWa ? waHref(service.waMessage || "") : service.url} target="_blank" rel="noreferrer"><Icon size={20}/><span><strong>{service.title}</strong><small>{service.description}</small><em className="service-action">{isWa ? <MessageCircle size={12}/> : <ArrowUpRight size={12}/>} {service.action}</em></span></a>; })}</div></section>)}</div>}
+        {activeView === "services" && <div className="onepage-panel svc-panel"><button className="back-link" onClick={() => setActiveView("home")}>← Home</button><span className="section-kicker">QUICK ACCESS</span><h1>Student Services</h1><p className="services-intro">Open official portals directly, get help with online applications, or order print-outs and other requests through the Chuka Comrades admin on WhatsApp.</p>
+          <nav className="svc-jump" aria-label="Jump to a service group">{serviceGroups.map(group => { const GIcon = group.icon; return <button key={group.id} className={`svc-jump-${group.tone}`} onClick={() => document.getElementById(group.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}><GIcon size={14}/> {group.title}</button>; })}</nav>
+          {serviceGroups.map(group => { const GIcon = group.icon; return <section className={`svc-group svc-${group.tone}`} id={group.id} key={group.id}>
+            <header className="svc-group-head"><span className="svc-group-badge"><GIcon size={20}/></span><div><span className="section-kicker">{group.step} · {group.kicker}</span><h2>{group.title}</h2><p>{group.blurb}</p></div></header>
+            {group.note && <p className="svc-note"><ShieldAlert size={14}/> {group.note}</p>}
+            <div className="svc-grid">{group.items.map(service => { const Icon = service.icon; const isWa = service.mode === "whatsapp"; return <a key={service.title} className="svc-card" href={isWa ? waHref(service.waMessage || "") : service.url} target="_blank" rel="noreferrer"><span className="svc-card-top"><span className="svc-icon"><Icon size={20}/></span><em className="svc-chip">{service.label}</em></span><strong>{service.title}</strong><small>{service.description}</small><span className="svc-action">{isWa ? <MessageCircle size={14}/> : <ArrowUpRight size={14}/>}<span>{service.action}</span><ArrowUpRight size={14} className="svc-action-arrow"/></span></a>; })}</div>
+          </section>; })}
+        </div>}
         </section>
       <footer className="onepage-footer"><span>© {new Date().getFullYear()} Chuka Comrades</span><span>Community-led, student-focused.</span></footer>
     </main>

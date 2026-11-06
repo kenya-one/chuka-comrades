@@ -640,3 +640,75 @@ button:focus-visible, a:focus-visible { outline: 3px solid #8bb99a; outline-offs
 .themed-community-link .onepage-community-copy small{color:#e8eef0}
 .themed-community-link>.service-icon{background:#ffffffe6}
 .themed-community-link>svg:last-child{color:#fff}
+
+/* CPL owns its full viewport inside the community view; other communities are unchanged. */
+.onepage-detail.cpl-detail-shell{padding:0;margin:0;max-width:none;width:100%;height:100%;min-height:0;overflow:auto;background:#080d13;border-radius:0}
+.onepage-content:has(.cpl-detail-shell){padding:0;max-width:none;width:100%;overflow:hidden}
+.onepage-shell.cpl-mode{height:100dvh;min-height:0;overflow:hidden;background:#080d13}
+.onepage-shell.cpl-mode>.onepage-header,.onepage-shell.cpl-mode>.onepage-footer{display:none}
+.onepage-shell.cpl-mode>.onepage-content{width:100%;max-width:none;height:100%;flex:1;min-height:0;padding:0;margin:0;overflow:auto;display:block}
+.onepage-shell.cpl-mode .onepage-detail.cpl-detail-shell{height:auto;min-height:100%;overflow:visible;padding:0;margin:0;max-width:none;width:100%;background:#080d13}
+@media(max-width:760px){.onepage-shell.cpl-mode{height:100dvh;min-height:0;overflow:hidden}.onepage-shell.cpl-mode>.onepage-content{width:100%;height:100%;padding:0;overflow:auto}.onepage-shell.cpl-mode .onepage-detail.cpl-detail-shell{padding:0;overflow:visible}}
+
+/* "Open …" button at the bottom of each What's new card */
+.live-feed-card { display: flex; flex-direction: column; }
+.live-feed-card .feed-empty { flex: 1; }
+.feed-open-updates {
+  width: 100%; margin-top: 16px; padding: 7px 7px 7px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  border: 1px solid #cfe3d3; border-radius: 999px; background: #f2f8f2; color: #155c39;
+  font: 700 12px 'Manrope', 'DM Sans', sans-serif; text-align: left; cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s, box-shadow .2s, transform .15s;
+}
+.feed-open-arrow {
+  width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center;
+  border-radius: 50%; background: #155c39; color: #fff; transition: transform .2s, background .2s, color .2s;
+}
+.feed-open-updates:hover { background: #155c39; border-color: #155c39; color: #fff; box-shadow: 0 8px 20px #155c3933; transform: translateY(-1px); }
+.feed-open-updates:hover .feed-open-arrow { background: #fff; color: #155c39; transform: translate(2px, -2px); }
+.feed-open-updates:active { transform: translateY(0); box-shadow: none; }
+@media (max-width: 640px) { .feed-open-updates { padding: 6px 6px 6px 15px; font-size: 12.5px; } .feed-open-arrow { width: 32px; height: 32px; } }
+
+/* ---------- Student services: three grouped sections ---------- */
+.svc-panel { --svc-accent: #155c39; --svc-soft: #edf5ed; --svc-line: #cfe3d3; }
+.svc-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 6px; }
+.svc-jump button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border: 1px solid #dfe7dc; border-radius: 999px; background: #fff; color: #234a31; font: 700 11.5px 'Manrope','DM Sans',sans-serif; cursor: pointer; transition: all .18s; }
+.svc-jump button:hover { background: #155c39; border-color: #155c39; color: #fff; transform: translateY(-1px); }
+.svc-group { --a: #155c39; --soft: #edf5ed; --line: #cfe3d3; margin-top: 26px; padding: 22px; border: 1px solid var(--line); border-radius: 22px; background: linear-gradient(180deg, var(--soft) 0, #fff 150px); scroll-margin-top: 14px; }
+.svc-apply { --a: #1d5fa8; --soft: #eef4fb; --line: #d3e1f1; }
+.svc-print { --a: #b45a10; --soft: #fdf3e8; --line: #f1dcc3; }
+.svc-group-head { display: flex; align-items: flex-start; gap: 14px; }
+.svc-group-badge { width: 46px; height: 46px; flex-shrink: 0; display: grid; place-items: center; border-radius: 14px; background: var(--a); color: #fff; box-shadow: 0 8px 18px color-mix(in srgb, var(--a) 28%, transparent); }
+.svc-group-head .section-kicker { color: var(--a); }
+.svc-group-head h2 { margin: 4px 0 4px; color: #17291f; font: 800 21px/1.25 'Manrope','DM Sans',sans-serif; }
+.svc-group-head p { margin: 0; color: #667568; font-size: 12.5px; line-height: 1.6; max-width: 640px; }
+.svc-note { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0 0; padding: 10px 13px; border-radius: 12px; background: #fff; border: 1px dashed var(--a); color: #35516f; font-size: 11.5px; line-height: 1.55; }
+.svc-note svg { flex-shrink: 0; margin-top: 2px; color: var(--a); }
+.svc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.svc-card { display: flex; flex-direction: column; gap: 7px; min-width: 0; padding: 16px; border: 1px solid #e4ebe3; border-radius: 16px; background: #fff; color: inherit; text-decoration: none; transition: transform .18s, box-shadow .18s, border-color .18s; }
+.svc-card:hover { transform: translateY(-3px); border-color: var(--a); box-shadow: 0 14px 28px color-mix(in srgb, var(--a) 16%, transparent); }
+.svc-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.svc-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: var(--soft); color: var(--a); }
+.svc-chip { padding: 4px 9px; border-radius: 99px; background: var(--soft); color: var(--a); font-size: 9.5px; font-style: normal; font-weight: 800; letter-spacing: .03em; white-space: nowrap; }
+.svc-card > strong { color: #17291f; font: 800 14px/1.35 'Manrope','DM Sans',sans-serif; }
+.svc-card > small { flex: 1; color: #6f7d72; font-size: 11.5px; line-height: 1.6; }
+.svc-action { display: flex; align-items: center; gap: 7px; margin-top: 8px; padding: 9px 12px; border-radius: 999px; background: var(--soft); color: var(--a); font: 800 11.5px 'Manrope','DM Sans',sans-serif; transition: background .18s, color .18s; }
+.svc-action > span { flex: 1; }
+.svc-action-arrow { transition: transform .18s; }
+.svc-card:hover .svc-action { background: var(--a); color: #fff; }
+.svc-card:hover .svc-action-arrow { transform: translate(2px, -2px); }
+@media (max-width: 980px) { .svc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .svc-group { padding: 16px; border-radius: 18px; margin-top: 20px; }
+  .svc-grid { grid-template-columns: 1fr; }
+  .svc-group-head h2 { font-size: 18px; }
+  .svc-group-head p { font-size: 13px; }
+  .svc-card > strong { font-size: 15px; }
+  .svc-card > small { font-size: 12.5px; }
+  .svc-action { padding: 11px 14px; font-size: 12.5px; }
+  .svc-jump { flex-wrap: nowrap; overflow-x: auto; margin-inline: -2px; padding-bottom: 4px; scrollbar-width: none; }
+  .svc-jump button { flex-shrink: 0; }
+}
+
+/* What's new now has 9 cards: three per row on wide screens */
+@media (min-width: 1180px) { .live-feed-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

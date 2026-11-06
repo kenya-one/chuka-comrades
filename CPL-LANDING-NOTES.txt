@@ -1,0 +1,19 @@
+CPL LANDING PAGE + BACKEND UPDATE
+
+The CPL landing page remains the visual entry point. The CPL Apps Script backend is now included under:
+apps-script/cpl/Code.gs
+
+Phase 1 adds the complete Google Sheets schema and Google Drive folders for:
+- League A / League B
+- seasons and transfer windows
+- teams, coaches, captains and players
+- fixtures, lineups, referees and approved results
+- match posters
+- CPL Cup knockout competitions
+- transfers
+- collections and deletion approvals
+- WhatsApp groups
+- awards/votes
+- news, disputes and audit logs
+
+The next frontend step is to connect Cpl.tsx/Cpl.css to the Apps Script API and make the landing page live.
