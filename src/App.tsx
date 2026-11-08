@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   onAuthStateChanged,
@@ -51,7 +50,7 @@ import { PoolLogo } from "./games/logos";
 import OZone from "./OZone";
 import HostelSection from "./HostelSection";
 import ChukaSoko from "./ChukaSoko";
-import Cpl from "./Cpl";
+import CplV2Entry from "./cpl-v2/CplV2Entry";
 import "./App.css";
 import InstallAppButton, {
   WhatsAppShareButton,
@@ -1258,7 +1257,6 @@ function App() {
                     and get to the student resources you need.
                   </p>
 
-                  {/* PWA + WhatsApp actions are now visible directly on the landing page */}
                   <div className="landing-app-actions">
                     <InstallAppButton />
                     <WhatsAppShareButton />
@@ -1583,10 +1581,19 @@ function App() {
                 />
               ) : activeCommunity ===
                 "Chuka Premier League" ? (
-                <Cpl
-                  user={user}
-                  onSignIn={handleGoogleSignIn}
-                />
+                <CplV2Entry
+  user={user}
+  onSignIn={handleGoogleSignIn}
+  onBackMain={() => {
+    setActiveCommunity(null);
+    setActiveView("home");
+    window.location.hash = "#home";
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }}
+/>
               ) : (
                 <>
                   <span className="section-kicker">

@@ -320,3 +320,56 @@ a.cpl-teamtag:hover .cpl-teamtag-name{color:var(--cpl-gold,#e5b95d);text-decorat
 .cpl-player-editor>.cpl-player-editor-head,.cpl-player-editor>button,.cpl-player-editor>.cpl-team-editor-notice{grid-column:1/-1}
 .cpl-player-editor-head{display:flex;align-items:center;gap:14px}.cpl-player-editor-head small{display:block;color:var(--cpl-muted,#a2b0b8)}
 @media(max-width:760px){.cpl-team-hero{flex-direction:column;align-items:flex-start}.cpl-search-bar{grid-template-columns:1fr 1fr}.cpl-search-bar input{grid-column:1/-1}.cpl-player-editor{grid-template-columns:1fr}.cpl-fixture-teams{flex-wrap:wrap}}
+
+
+
+/* CPL NIGHT STADIUM HERO */
+.cpl-hero-full {
+  position: relative;
+  overflow: hidden;
+  background-image:
+    linear-gradient(
+      90deg,
+      rgba(4, 12, 13, 0.96) 0%,
+      rgba(4, 12, 13, 0.82) 45%,
+      rgba(4, 12, 13, 0.38) 100%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(4, 12, 13, 0.75),
+      transparent 55%
+    ),
+    url("/images/cpl-stadium.jpg");
+  background-size: cover;
+  background-position: center 55%;
+  background-repeat: no-repeat;
+}
+
+.cpl-hero-grid {
+  position: relative;
+  z-index: 2;
+}
+
+/* Give the stadium image priority over the old abstract artwork */
+.cpl-hero-art {
+  display: none;
+}
+
+/* Mobile presentation */
+@media (max-width: 680px) {
+  .cpl-hero-full {
+    background-position: center;
+    background-image:
+      linear-gradient(
+        90deg,
+        rgba(4, 12, 13, 0.88),
+        rgba(4, 12, 13, 0.62)
+      ),
+      linear-gradient(
+        0deg,
+        rgba(4, 12, 13, 0.78),
+        transparent
+      ),
+      url("/images/cpl-stadium.jpg");
+  }
+}
