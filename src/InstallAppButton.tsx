@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
 import "./InstallAppButton.css";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -14,100 +13,99 @@ function getAppUrl() {
   return `${window.location.origin}${import.meta.env.BASE_URL}`;
 }
 
+/*
+ * The browser fires `beforeinstallprompt` only once, very early in page
+ * load. The button mounts only after the splash screen, so listening inside
+ * the component would miss the event. We capture it here, at module load,
+ * and share it with every InstallAppButton on the page.
+ */
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
+let appInstalled = false;
+const subscribers = new Set<() => void>();
+
+function notifySubscribers() {
+  subscribers.forEach((callback) => callback());
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredPrompt = event as BeforeInstallPromptEvent;
+    notifySubscribers();
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredPrompt = null;
+    appInstalled = true;
+    notifySubscribers();
+  });
+}
+
 export default function InstallAppButton() {
   const [installPrompt, setInstallPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
+    useState<BeforeInstallPromptEvent | null>(deferredPrompt);
 
-  const [isIOS, setIsIOS] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(appInstalled);
 
   useEffect(() => {
-    const checkInstalled = () => {
-      const standalone =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true;
 
-      setIsInstalled(standalone);
-    };
-
-    checkInstalled();
-
-    const appleDevice =
-      /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
-    setIsIOS(appleDevice);
-
-    const handleBeforeInstall = (event: Event) => {
-      event.preventDefault();
-
-      setInstallPrompt(event as BeforeInstallPromptEvent);
-    };
-
-    const handleInstalled = () => {
+    if (standalone) {
       setIsInstalled(true);
-      setInstallPrompt(null);
-      setShowInstructions(false);
+    }
+
+    const sync = () => {
+      setInstallPrompt(deferredPrompt);
+      setIsInstalled(appInstalled);
     };
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
-    window.addEventListener("appinstalled", handleInstalled);
+    // Pick up an event that fired before this component mounted.
+    sync();
+
+    subscribers.add(sync);
 
     return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstall,
-      );
-      window.removeEventListener("appinstalled", handleInstalled);
+      subscribers.delete(sync);
     };
   }, []);
 
   const handleInstall = async () => {
-    /*
-     * Android / Chrome / Edge:
-     * This directly opens the browser's native PWA
-     * installation dialog.
-     */
-    if (installPrompt) {
-      await installPrompt.prompt();
+    if (!deferredPrompt) {
+      return;
+    }
 
-      const result = await installPrompt.userChoice;
+    const promptEvent = deferredPrompt;
+
+    // A prompt event can only be used once.
+    deferredPrompt = null;
+    setInstallPrompt(null);
+
+    try {
+      // Opens the browser's native install dialog.
+      await promptEvent.prompt();
+      const result = await promptEvent.userChoice;
 
       if (result.outcome === "accepted") {
+        appInstalled = true;
         setIsInstalled(true);
+        notifySubscribers();
       }
-
-      setInstallPrompt(null);
-      return;
+    } catch (error) {
+      console.error("PWA install prompt failed:", error);
     }
-
-    /*
-     * iPhone / iPad does not expose beforeinstallprompt.
-     * The browser requires the user to use Safari's
-     * Add to Home Screen flow.
-     */
-    if (isIOS) {
-      setShowInstructions((current) => !current);
-      return;
-    }
-
-    /*
-     * If the browser has not supplied the install prompt yet,
-     * open the application URL. The PWA remains installable
-     * through the browser's native menu.
-     */
-    window.location.href = getAppUrl();
   };
 
-  if (isInstalled) {
+  /*
+   * Only show the button when the browser has actually offered a
+   * one-tap install (or hide it once the app is installed), so a click
+   * always installs directly.
+   */
+  if (isInstalled || !installPrompt) {
     return null;
   }
 
-  /*
-   * Keep the button visible on supported browsers and iOS.
-   * This means the user can always see the Install app CTA.
-   */
   return (
     <div className="install-app-wrap">
       <button
@@ -119,42 +117,12 @@ export default function InstallAppButton() {
         aria-label="Install Chuka Comrades app"
       >
         <img
-          src={`${import.meta.env.BASE_URL}chukalogo.png`}
+          src={`${import.meta.env.BASE_URL}chukalogo-192.png`}
           alt=""
         />
 
         <span>Install app</span>
       </button>
-
-      {isIOS && showInstructions && (
-        <div className="install-instructions">
-          <button
-            type="button"
-            className="install-instructions-close"
-            onClick={() => setShowInstructions(false)}
-            aria-label="Close installation instructions"
-          >
-            <X size={17} />
-          </button>
-
-          <strong>Install Chuka Comrades</strong>
-
-          <p>
-            On your iPhone or iPad:
-          </p>
-
-          <ol>
-            <li>Open Chuka Comrades in Safari.</li>
-            <li>Tap the Safari Share button.</li>
-            <li>Select <strong>Add to Home Screen</strong>.</li>
-            <li>Tap <strong>Add</strong>.</li>
-          </ol>
-
-          <small>
-            The Chuka Comrades logo will appear on your Home Screen.
-          </small>
-        </div>
-      )}
     </div>
   );
 }
